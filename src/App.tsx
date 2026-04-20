@@ -21,7 +21,7 @@ import {
 } from "./lib/reviewPackEngine";
 import { useI18n } from "./i18n";
 
-type Screen = "welcome" | "inputs" | "build" | "result";
+type Screen = "welcome" | "detail" | "inputs" | "build" | "result";
 type InputMode = "directory" | "manual";
 type RequiredFieldKey = "bundle" | "receipt" | "summary";
 type OptionalFieldKey = "manifest" | "publicKey" | "runtimeEvents";
@@ -99,7 +99,12 @@ const optionalFieldKeys: OptionalFieldKey[] = [
   "publicKey",
   "runtimeEvents",
 ];
-const screenOrder: Screen[] = ["welcome", "inputs", "build", "result"];
+const screenOrder: Array<Exclude<Screen, "detail">> = [
+  "welcome",
+  "inputs",
+  "build",
+  "result",
+];
 const recentRunDisplayLimit = 5;
 const detectionWarningFieldMap: Record<DetectionWarningKind, FieldKey> = {
   bundle: "bundle",
@@ -208,6 +213,7 @@ function App() {
   const [detectionState, setDetectionState] = useState<DetectionState>({
     status: "idle",
   });
+  const [currentRunItem, setCurrentRunItem] = useState<RunInboxItem | null>(null);
   const [inboxDiscovery, setInboxDiscovery] = useState<InboxDiscoveryState>({
     status: "loading",
   });
@@ -221,6 +227,7 @@ function App() {
   const [notice, setNotice] = useState<NoticeState>(null);
   const [buildRun, setBuildRun] = useState<BuildRunState>({ status: "idle" });
   const [welcomeDetailsVisible, setWelcomeDetailsVisible] = useState(false);
+  const [detailFileDetailsVisible, setDetailFileDetailsVisible] = useState(false);
   const [directoryDetailsVisible, setDirectoryDetailsVisible] = useState(false);
   const [buildDetailsVisible, setBuildDetailsVisible] = useState(false);
   const [resultDetailsVisible, setResultDetailsVisible] = useState(false);
@@ -360,6 +367,17 @@ function App() {
     detectionState.status === "ready"
       ? detectionState.result.runResultDirectory
       : latestInboxResult?.runResultDirectory ?? "";
+  const currentRunDirectoryName = basenameFromPath(selectedRunDirectory);
+  const currentRunTimeLabel = currentRunItem
+    ? formatRunTimestamp(locale, currentRunItem.modifiedMs)
+    : t("detail.summary.timeUnknown");
+  const currentRunSourceLabel = currentRunItem
+    ? currentRunItem.source === "localRunResult"
+      ? t("detail.summary.sourceInbox")
+      : t("detail.summary.sourceLocal")
+    : directoryOrigin === "manual"
+      ? t("detail.summary.sourceManual")
+      : t("detail.summary.sourceLocal");
 
   const currentRunStatusKey = useMemo<RunStatusKey>(() => {
     if (!requiredPaths.bundle) {
@@ -379,6 +397,37 @@ function App() {
 
   const currentRunStatusTone: NoticeTone =
     currentRunStatusKey === "ready" ? "success" : "warning";
+  const currentRunStatusLabel =
+    currentRunItem?.reviewPackStatus === "generated"
+      ? t("detail.judgment.generated")
+      : t(`runStatus.${currentRunStatusKey}.label`);
+  const currentRunStatusHint =
+    currentRunItem?.reviewPackStatus === "generated"
+      ? t("detail.judgment.generatedHint")
+      : t(`runStatus.${currentRunStatusKey}.hint`);
+  const currentRunNextActionLabel =
+    currentRunStatusKey === "ready"
+      ? formValid
+        ? t("detail.actions.goToBuild")
+        : t("detail.actions.prepareBuild")
+      : t("detail.actions.fixManually");
+  const detailJudgmentItems = useMemo(() => {
+    const items: string[] = [];
+
+    if (currentRunItem?.reviewPackStatus === "generated") {
+      items.push(t("detail.judgment.generated"));
+    } else if (currentRunStatusKey === "ready") {
+      items.push(t("detail.judgment.ready"));
+    } else {
+      items.push(t("detail.judgment.needsAttention"));
+    }
+
+    if (detectionState.status === "ready" && detectionState.result.warnings.length > 0) {
+      items.push(t("detail.judgment.needsManualReview"));
+    }
+
+    return items;
+  }, [currentRunItem, currentRunStatusKey, detectionState, t]);
 
   const welcomeState = useMemo(() => {
     if (inboxDiscovery.status === "loading") {
@@ -536,16 +585,19 @@ function App() {
     });
   }, [buildRun]);
 
-  const resultData =
-    buildRun.status === "success"
-      ? {
-          packDir: buildRun.run.result.pack_dir,
-          indexPath: buildRun.run.result.index_path,
-          reportPath: buildRun.run.result.report_path,
-          primaryFiles: buildRun.run.result.primary_files,
-          supportingFiles: buildRun.run.result.supporting_files,
-        }
-      : null;
+  const resultData = useMemo(
+    () =>
+      buildRun.status === "success"
+        ? {
+            packDir: buildRun.run.result.pack_dir,
+            indexPath: buildRun.run.result.index_path,
+            reportPath: buildRun.run.result.report_path,
+            primaryFiles: buildRun.run.result.primary_files,
+            supportingFiles: buildRun.run.result.supporting_files,
+          }
+        : null,
+    [buildRun],
+  );
 
   useEffect(() => {
     let active = true;
@@ -626,6 +678,7 @@ function App() {
     setRunResultDirectory(result.runResultDirectory);
     setDetectionState({ status: "ready", result });
     setDirectoryDetailsVisible(options.detailsVisible);
+    setDetailFileDetailsVisible(false);
     applyDetectionResult(result);
   }
 
@@ -664,7 +717,9 @@ function App() {
     resetBuildFlow();
     setInputMode("directory");
     setDirectoryOrigin("manual");
+    setCurrentRunItem(null);
     setDirectoryDetailsVisible(false);
+    setDetailFileDetailsVisible(false);
     setRunResultDirectory(selected);
     setDetectionState({ status: "scanning", directory: selected });
     setRequiredPaths({ ...emptyRequiredFieldState });
@@ -697,6 +752,11 @@ function App() {
       return;
     }
 
+    setCurrentRunItem(
+      recentRuns.find(
+        (run) => run.runResultDirectory === latestInboxResult.runResultDirectory,
+      ) ?? null,
+    );
     activateDetectionResult(latestInboxResult, {
       origin: "inbox",
       detailsVisible: false,
@@ -708,11 +768,21 @@ function App() {
     run: RunInboxItem,
     options: { detailsVisible: boolean },
   ) {
+    setCurrentRunItem(run);
     activateDetectionResult(run.detection, {
       origin: "inbox",
       detailsVisible: options.detailsVisible || run.missingRequiredFields.length > 0,
     });
     setScreen("inputs");
+  }
+
+  function viewInboxRunDetail(run: RunInboxItem) {
+    setCurrentRunItem(run);
+    activateDetectionResult(run.detection, {
+      origin: "inbox",
+      detailsVisible: false,
+    });
+    setScreen("detail");
   }
 
   async function handleWelcomeChooseDirectory() {
@@ -724,6 +794,11 @@ function App() {
 
   function handleWelcomeManualMode() {
     if (latestInboxResult) {
+      setCurrentRunItem(
+        recentRuns.find(
+          (run) => run.runResultDirectory === latestInboxResult.runResultDirectory,
+        ) ?? null,
+      );
       activateDetectionResult(latestInboxResult, {
         origin: "inbox",
         detailsVisible: false,
@@ -732,6 +807,34 @@ function App() {
 
     setNotice(null);
     setInputMode("manual");
+    setScreen("inputs");
+  }
+
+  async function handleRunDetailReselectDirectory() {
+    const selected = await chooseRunResultDirectory();
+    if (selected) {
+      setScreen("inputs");
+    }
+  }
+
+  function handleRunDetailPrimaryAction() {
+    if (currentRunStatusKey === "ready") {
+      if (formValid) {
+        goToScreen("build");
+      } else {
+        setScreen("inputs");
+      }
+      return;
+    }
+
+    setInputMode("manual");
+    setDirectoryDetailsVisible(true);
+    setScreen("inputs");
+  }
+
+  function handleRunDetailAdvancedFix() {
+    setInputMode("manual");
+    setDirectoryDetailsVisible(true);
     setScreen("inputs");
   }
 
@@ -795,8 +898,10 @@ function App() {
   function clearRunResultDirectory() {
     resetBuildFlow();
     setDirectoryOrigin(null);
+    setCurrentRunItem(null);
     setRunResultDirectory("");
     setDirectoryDetailsVisible(false);
+    setDetailFileDetailsVisible(false);
     setDetectionState({ status: "idle" });
     setRequiredPaths({ ...emptyRequiredFieldState });
     setOptionalPaths({ ...emptyOptionalFieldState });
@@ -982,7 +1087,8 @@ function App() {
 
         <nav className="step-nav" aria-label={t("shell.stepNavigationLabel")}>
           {screenOrder.map((item, index) => {
-            const isActive = item === screen;
+            const isActive =
+              item === screen || (screen === "detail" && item === "welcome");
             const blocked = item === "build" && !formValid;
 
             return (
@@ -1143,9 +1249,7 @@ function App() {
                         tone={status.tone}
                         verificationLabel={status.verificationLabel}
                         onSelect={() => useInboxRun(run, { detailsVisible: false })}
-                        onViewDetails={() =>
-                          useInboxRun(run, { detailsVisible: true })
-                        }
+                        onViewDetails={() => viewInboxRunDetail(run)}
                         selectLabel={status.primaryActionLabel}
                         viewDetailsLabel={t("welcome.recentRuns.actions.viewDetails")}
                       />
@@ -1202,6 +1306,250 @@ function App() {
                 </article>
               </div>
             )}
+          </section>
+        )}
+
+        {screen === "detail" && detectionState.status === "ready" && (
+          <section className="panel">
+            <header className="panel-header">
+              <div>
+                <span className="section-kicker">{t("detail.kicker")}</span>
+                <h2>{t("detail.title")}</h2>
+                <p>{t("detail.description")}</p>
+              </div>
+              <span
+                className={
+                  currentRunStatusTone === "success"
+                    ? "status-chip status-chip-ready"
+                    : "status-chip status-chip-warning"
+                }
+              >
+                {currentRunStatusLabel}
+              </span>
+            </header>
+
+            <section className="detail-summary-card">
+              <div className="detail-summary-header">
+                <div>
+                  <h3>{currentRunItem?.runId || currentRunDirectoryName}</h3>
+                  <p>{currentRunStatusHint}</p>
+                </div>
+                <span className="status-chip">{currentRunSourceLabel}</span>
+              </div>
+
+              <div className="detail-overview-grid">
+                <DetailStatusCard
+                  label={t("detail.summary.runId")}
+                  value={currentRunItem?.runId || currentRunDirectoryName}
+                  hint={t("detail.summary.directoryNameHint")}
+                />
+                <DetailStatusCard
+                  label={t("detail.summary.time")}
+                  value={currentRunTimeLabel}
+                  hint={t("detail.summary.timeHint")}
+                />
+                <DetailStatusCard
+                  label={t("detail.summary.source")}
+                  value={currentRunSourceLabel}
+                  hint={t("detail.summary.sourceHint")}
+                />
+                <DetailStatusCard
+                  label={t("detail.summary.currentStatus")}
+                  value={currentRunStatusLabel}
+                  hint={currentRunNextActionLabel}
+                  tone={currentRunStatusTone}
+                />
+              </div>
+            </section>
+
+            <div className="inventory-grid">
+              <section className="inventory-panel detail-section-panel">
+                <h3>{t("detail.evidence.title")}</h3>
+                <p>{t("detail.evidence.description")}</p>
+                <div className="detail-status-grid">
+                  {requiredFieldKeys.map((key) => (
+                    <DetailStatusCard
+                      key={key}
+                      label={t(`detail.evidence.fields.${key}`)}
+                      value={
+                        requiredPaths[key]
+                          ? t("detail.common.detected")
+                          : t("detail.common.missing")
+                      }
+                      hint={
+                        requiredPaths[key]
+                          ? t("detail.evidence.detectedHint")
+                          : t(`inputs.directoryImport.missingFields.${key}`)
+                      }
+                      tone={requiredPaths[key] ? "success" : "warning"}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section className="inventory-panel detail-section-panel">
+                <h3>{t("detail.supporting.title")}</h3>
+                <p>{t("detail.supporting.description")}</p>
+                <div className="detail-status-grid">
+                  {optionalFieldKeys.map((key) => (
+                    <DetailStatusCard
+                      key={key}
+                      label={t(`detail.supporting.fields.${key}`)}
+                      value={
+                        optionalPaths[key]
+                          ? t("detail.common.available")
+                          : t("detail.common.notAvailable")
+                      }
+                      hint={
+                        optionalPaths[key]
+                          ? t("detail.supporting.availableHint")
+                          : t("detail.supporting.missingHint")
+                      }
+                      tone={optionalPaths[key] ? "success" : "neutral"}
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <section className="inventory-panel detail-section-panel">
+              <h3>{t("detail.judgment.title")}</h3>
+              <p>{t("detail.judgment.description")}</p>
+              <div className="detail-judgment-chip-row">
+                {detailJudgmentItems.map((item) => (
+                  <span
+                    key={item}
+                    className={
+                      currentRunStatusTone === "success"
+                        ? "status-chip status-chip-ready"
+                        : "status-chip status-chip-warning"
+                    }
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+
+              {detectionIssues.length > 0 && (
+                <Callout tone="warning">
+                  <strong>{t("detail.issues.title")}</strong>
+                  <ul className="issue-list">
+                    {detectionIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </Callout>
+              )}
+            </section>
+
+            <div className="panel-actions">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={handleRunDetailPrimaryAction}
+              >
+                {currentRunStatusKey === "ready"
+                  ? formValid
+                    ? t("detail.actions.goToBuild")
+                    : t("detail.actions.prepareBuild")
+                  : t("detail.actions.fixManually")}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={handleRunDetailReselectDirectory}
+              >
+                {t("detail.actions.reselectDirectory")}
+              </button>
+              {currentRunStatusKey === "ready" && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleRunDetailAdvancedFix}
+                >
+                  {t("detail.actions.fixManually")}
+                </button>
+              )}
+              <button
+                className="tertiary-button"
+                type="button"
+                onClick={() => setScreen("welcome")}
+              >
+                {t("detail.actions.backToRuns")}
+              </button>
+              <button
+                className="tertiary-button"
+                type="button"
+                onClick={() =>
+                  setDetailFileDetailsVisible((current) => !current)
+                }
+              >
+                {detailFileDetailsVisible
+                  ? t("detail.actions.hideFileDetails")
+                  : t("detail.actions.showFileDetails")}
+              </button>
+            </div>
+
+            {detailFileDetailsVisible && (
+              <div className="inventory-grid">
+                <section className="inventory-panel detail-section-panel">
+                  <h3>{t("detail.files.requiredTitle")}</h3>
+                  <p>{t("detail.files.requiredDescription")}</p>
+                  <ul className="path-list">
+                    {requiredFieldKeys.map((key) => (
+                      <li key={key}>
+                        <PathGroup
+                          label={t(`inputs.fields.${key}.label`)}
+                          path={requiredPaths[key]}
+                          emptyText={t("detail.common.notDetected")}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="inventory-panel detail-section-panel">
+                  <h3>{t("detail.files.supportingTitle")}</h3>
+                  <p>{t("detail.files.supportingDescription")}</p>
+                  <ul className="path-list">
+                    {optionalFieldKeys.map((key) => (
+                      <li key={key}>
+                        <PathGroup
+                          label={t(`inputs.fields.${key}.label`)}
+                          path={optionalPaths[key]}
+                          emptyText={t("detail.common.notAvailable")}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            )}
+          </section>
+        )}
+
+        {screen === "detail" && detectionState.status !== "ready" && (
+          <section className="panel">
+            <header className="panel-header">
+              <div>
+                <span className="section-kicker">{t("detail.kicker")}</span>
+                <h2>{t("detail.emptyTitle")}</h2>
+                <p>{t("detail.emptyDescription")}</p>
+              </div>
+              <span className="status-chip status-chip-warning">
+                {t("detail.emptyStatus")}
+              </span>
+            </header>
+
+            <div className="panel-actions">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => setScreen("welcome")}
+              >
+                {t("detail.actions.backToRuns")}
+              </button>
+            </div>
           </section>
         )}
 
@@ -2185,6 +2533,36 @@ function RecentRunCard({
           {viewDetailsLabel}
         </button>
       </div>
+    </article>
+  );
+}
+
+function DetailStatusCard({
+  hint,
+  label,
+  tone = "neutral",
+  value,
+}: {
+  hint: string;
+  label: string;
+  tone?: NoticeTone;
+  value: string;
+}) {
+  return (
+    <article className="detail-status-card">
+      <strong>{label}</strong>
+      <span
+        className={
+          tone === "success"
+            ? "status-chip status-chip-ready"
+            : tone === "warning"
+              ? "status-chip status-chip-warning"
+              : "status-chip"
+        }
+      >
+        {value}
+      </span>
+      <p>{hint}</p>
     </article>
   );
 }

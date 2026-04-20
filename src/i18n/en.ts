@@ -141,6 +141,90 @@ const en = {
       },
     },
   },
+  detail: {
+    kicker: "Run detail",
+    title: "Run detail",
+    description:
+      "Start from whether this run is complete, what is missing, and what the next action should be. Technical paths stay behind a details toggle by default.",
+    emptyTitle: "Choose one recent run first",
+    emptyDescription:
+      "There is no run detail to show yet. Go back to the recent-run list, choose a run, then enter the detail view.",
+    emptyStatus: "No detail yet",
+    summary: {
+      runId: "Run ID",
+      directoryNameHint: "This shows the current directory name or run ID.",
+      time: "Time",
+      timeHint: "This shows the latest modified time for the current run.",
+      timeUnknown: "Time pending",
+      source: "Source",
+      sourceHint: "This shows whether the run came from the inbox or from a manually imported directory.",
+      sourceInbox: "Run result inbox",
+      sourceLocal: "Local run result",
+      sourceManual: "Imported directory",
+      currentStatus: "Current status",
+    },
+    common: {
+      detected: "Detected",
+      missing: "Missing",
+      available: "Available",
+      notAvailable: "Not available",
+      notDetected: "Not detected",
+    },
+    evidence: {
+      title: "Evidence completeness",
+      description:
+        "Start from whether the three required files are present, then decide whether Review Pack can continue.",
+      detectedHint: "This file is already detected and can continue into the next step.",
+      fields: {
+        bundle: "Evidence package file",
+        receipt: "Verification receipt file",
+        summary: "Summary file",
+      },
+    },
+    supporting: {
+      title: "Supporting files",
+      description:
+        "Supporting files remain supporting and do not change the boundary that the three core files stay primary.",
+      availableHint: "This supporting file is available as extra context.",
+      missingHint: "This supporting file was not detected. That does not change the primary boundary judgment.",
+      fields: {
+        manifest: "manifest",
+        publicKey: "public key",
+        runtimeEvents: "runtime events",
+      },
+    },
+    judgment: {
+      title: "Current judgment",
+      description:
+        "This section answers whether the run can continue now, and what action should happen next.",
+      ready: "Review Pack can be generated",
+      generated: "Review Pack already generated",
+      generatedHint:
+        "This run already produced a Review Pack, but it can still be reviewed or re-entered into the flow.",
+      needsAttention: "Needs attention",
+      needsManualReview: "Needs manual review",
+    },
+    issues: {
+      title: "Items that need attention",
+    },
+    actions: {
+      goToBuild: "Generate Review Pack",
+      prepareBuild: "Continue to output setup",
+      reselectDirectory: "Choose another directory",
+      fixManually: "Advanced manual correction",
+      backToRuns: "Back to recent runs",
+      showFileDetails: "View file details",
+      hideFileDetails: "Hide file details",
+    },
+    files: {
+      requiredTitle: "Core file details",
+      requiredDescription:
+        "This shows the actual paths for the evidence package, verification receipt, and summary.",
+      supportingTitle: "Supporting file details",
+      supportingDescription:
+        "This shows the actual paths for manifest, public key, and runtime events.",
+    },
+  },
   inputs: {
     kicker: "Input setup",
     title: "Confirm the current run result",

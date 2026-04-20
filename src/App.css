@@ -246,6 +246,9 @@ button {
 }
 
 .feature-card,
+.spotlight-card,
+.delivery-focus-card,
+.mode-summary-card,
 .build-card,
 .result-card,
 .inventory-panel,
@@ -259,6 +262,8 @@ button {
 }
 
 .feature-card h3,
+.spotlight-card h3,
+.delivery-focus-card h3,
 .result-card h3,
 .inventory-panel h3,
 .preflight-card h3 {
@@ -286,6 +291,44 @@ button {
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+}
+
+.spotlight-card,
+.delivery-focus-card,
+.mode-summary-card {
+  background: #fdfbf4;
+  border: 1px solid rgba(18, 44, 32, 0.08);
+  border-radius: 24px;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.spotlight-card-header,
+.delivery-focus-header,
+.mode-summary-card {
+  align-items: start;
+}
+
+.spotlight-card-header,
+.delivery-focus-header {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.mode-summary-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.mode-summary-card strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.mode-summary-card p {
+  margin: 0;
 }
 
 .run-status-card {
@@ -576,6 +619,13 @@ button {
   justify-items: start;
 }
 
+.issue-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
 .primary-button,
 .secondary-button,
 .tertiary-button {
@@ -735,6 +785,10 @@ button {
   }
 
   .mode-switch {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-summary-card {
     grid-template-columns: 1fr;
   }
 

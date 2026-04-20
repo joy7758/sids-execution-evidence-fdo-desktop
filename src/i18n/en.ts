@@ -44,9 +44,13 @@ const en = {
     kicker: "Run inbox",
     title: "Agent Run Monitoring",
     description:
-      "The app first checks the local run inbox and tries to find the latest complete run result. If it finds one, you can move directly into the Review Pack flow. If not, choose a directory or correct files manually.",
+      "Start by checking whether the app has already found the latest usable run result. Only when nothing usable is found, or detection stays incomplete, should users correct paths manually.",
     actions: {
       useLatest: "Use latest run result",
+      primaryFound: "Generate Review Pack",
+      primaryImport: "Import run result",
+      viewDetails: "View details",
+      hideDetails: "Hide details",
       chooseDirectory: "Choose run result directory",
       advancedManual: "Advanced: choose files manually",
     },
@@ -71,6 +75,21 @@ const en = {
       missingDescription:
         "The default inbox is {0}. You can also choose a run result directory directly.",
       failedTitle: "The inbox could not be checked right now",
+      readyHint:
+        "The latest run result is complete and can move directly into build confirmation.",
+      readyAction: "Next: confirm the output location and generate Review Pack",
+      missingHint: "Import one run result directory first, then continue.",
+      emptyHint:
+        "The inbox does not contain a complete result yet. Import a directory now, and use manual correction only if needed.",
+      failedHint:
+        "Automatic discovery is unavailable right now. You can still continue by importing a run result directory manually.",
+      loadingHint:
+        "The app is checking the default inbox to see whether a recent complete run result already exists.",
+    },
+    spotlight: {
+      currentRunTitle: "Current usable run result",
+      directoryLabel: "Latest run result",
+      sourceInbox: "Source: run result inbox",
     },
     cards: {
       inbox: {
@@ -83,14 +102,26 @@ const en = {
         directoryLabel: "Latest run result directory",
         empty: "No complete run result is available yet.",
       },
+      manual: {
+        title: "Fallback path",
+        body: "Use directory import or advanced manual selection only when automatic discovery is incomplete or a path needs correction.",
+      },
     },
   },
   inputs: {
     kicker: "Input setup",
-    title: "Import a run result directory before building Review Pack",
+    title: "Confirm the current run result",
     description:
-      "The default path is one run result directory with automatic detection. If detection is incomplete, switch to Advanced manual selection and correct the file paths.",
+      "Start from the current run status and only open technical file details when a correction is needed.",
     modeTitle: "Input mode",
+    modeSummary: {
+      directory:
+        "The default path is automatic detection for the current run result. Switch to Advanced manual selection only when detection is incomplete.",
+      manual:
+        "You are correcting file paths manually. When the paths look right, return to the automatic path and continue.",
+    },
+    manualModeBadge: "Advanced manual selection",
+    backToAutoAction: "Back to automatic path",
     modes: {
       directory: {
         label: "Import Run Result Directory",
@@ -144,6 +175,8 @@ const en = {
       statusIncomplete: "Automatic detection incomplete",
       statusFailed: "Directory scan failed",
       directorySelected: "Directory selected",
+      detectedCardTitle: "Current run result",
+      cardSourceManual: "Source: imported directory",
       scanningNotice:
         "The app is scanning the selected directory and detecting the available evidence files.",
       detectedPrimaryTitle: "Detected core files",
@@ -156,9 +189,11 @@ const en = {
       optionalNotDetected: "This supporting file was not detected in the selected directory",
       warningsTitle: "Detection warnings",
       multipleCandidates: "Multiple {0} candidates were found. The app is currently using {1}.",
+      issuesTitle: "Items that need attention",
       detectedIncompleteHelp:
         "Automatic detection is incomplete. Review the missing items, or switch to Advanced manual selection to correct the file paths.",
       useAdvancedAction: "Switch to Advanced manual selection",
+      hideDetails: "Hide detection details",
       scanFailedTitle: "The directory scan did not complete",
       scanFailed:
         "The app could not detect a complete result from this directory. Check the directory contents, or switch to Advanced manual selection.",
@@ -167,6 +202,11 @@ const en = {
         "The app detected some files, but required items are still missing. Correct them before continuing.",
       fixMissingNotice:
         "Automatic detection is still incomplete. Correct the missing files, or switch to Advanced manual selection before continuing.",
+      missingFields: {
+        bundle: "Evidence package file is missing",
+        receipt: "Verification receipt file is missing",
+        summary: "Summary file is missing",
+      },
     },
     outputSectionTitle: "Output directory",
     outputSectionDescription:
@@ -233,9 +273,9 @@ const en = {
   },
   build: {
     kicker: "Preflight review",
-    title: "Review the inputs, then send them to the local engine",
+    title: "Confirm and generate Review Pack",
     description:
-      "Review the current run source, the output location, and the status summary before generating Review Pack.",
+      "This page only confirms the current run source, the save location, and the status summary. Technical paths stay collapsed unless needed.",
     statusIdle: "Ready to build",
     statusRunning: "Building now",
     statusSuccess: "Build succeeded",
@@ -246,6 +286,12 @@ const en = {
     secondaryAction: "Back to inputs",
     runningCallout:
       "The desktop app is calling the local Review Pack engine now. Keep this window open until the result returns.",
+    focus: {
+      idle: "Everything needed is ready. Confirm it and generate Review Pack.",
+      success:
+        "The review pack has already been generated successfully. Open the result view when you are ready to deliver it.",
+      failure: "This build did not finish. Review the result first, then decide whether to retry.",
+    },
     failure: {
       title: "This build did not complete",
       detailsTitle: "Machine-readable error details",
@@ -332,9 +378,9 @@ const en = {
     emptyTitle: "Run one review-pack build first",
     emptyDescription:
       "There is no generated result to show yet. Go back to the Build page, run the local engine once, then return here.",
-    successTitle: "The review pack is ready",
+    successTitle: "Review Pack is ready",
     successDescription:
-      "This build returned a stable result. You can open the output folder or copy the pack path for the next handoff.",
+      "The first screen keeps the focus on the delivery result: where it was saved, and what to do next.",
     failureTitle: "The local engine returned a failure",
     failureDetailsTitle: "Failure details",
     errorCodeLabel: "Error code",
@@ -357,7 +403,15 @@ const en = {
       "The review-pack folder could not be opened right now. Make sure the local output still exists.",
     copyPathSuccess: "Copied the review-pack folder path.",
     copyPathFailed: "The path could not be copied. Try again.",
+    showDetailsAction: "View output details",
+    hideDetailsAction: "Hide output details",
     goToBuildAction: "Back to build",
+    deliveryCard: {
+      title: "Delivery result",
+      body: "Start from the saved location of this Review Pack. Technical and intermediate files can stay behind the details toggle.",
+      status: "Ready to deliver",
+      directoryLabel: "Saved location",
+    },
     cards: {
       packDir: {
         title: "Review pack directory",

@@ -177,8 +177,10 @@ function App() {
   const [outputDir, setOutputDir] = useState("");
   const [notice, setNotice] = useState<NoticeState>(null);
   const [buildRun, setBuildRun] = useState<BuildRunState>({ status: "idle" });
+  const [welcomeDetailsVisible, setWelcomeDetailsVisible] = useState(false);
   const [directoryDetailsVisible, setDirectoryDetailsVisible] = useState(false);
   const [buildDetailsVisible, setBuildDetailsVisible] = useState(false);
+  const [resultDetailsVisible, setResultDetailsVisible] = useState(false);
 
   const validationErrors = useMemo<ValidationErrors>(
     () => ({
@@ -198,9 +200,6 @@ function App() {
   const requiredReadyCount = requiredFieldKeys.filter(
     (key) => Boolean(requiredPaths[key]),
   ).length;
-  const selectedOptionalCount = optionalFieldKeys.filter(
-    (key) => Boolean(optionalPaths[key]),
-  ).length;
 
   const directoryWarnings = useMemo(() => {
     if (detectionState.status !== "ready") {
@@ -219,6 +218,16 @@ function App() {
     });
   }, [detectionState, t]);
   const usingRunResultDirectory = Boolean(runResultDirectory.trim());
+
+  const detectionIssues = useMemo(() => {
+    if (detectionState.status !== "ready") {
+      return [];
+    }
+
+    return detectionState.result.missingRequiredFields.map((field) =>
+      t(`inputs.directoryImport.missingFields.${field}`),
+    );
+  }, [detectionState, t]);
 
   const detectedDirectoryStatusLabel = useMemo(() => {
     switch (detectionState.status) {
@@ -427,6 +436,7 @@ function App() {
   function resetBuildFlow() {
     setBuildRun({ status: "idle" });
     setBuildDetailsVisible(false);
+    setResultDetailsVisible(false);
     setNotice(null);
   }
 
@@ -495,7 +505,7 @@ function App() {
     resetBuildFlow();
     setInputMode("directory");
     setDirectoryOrigin("manual");
-    setDirectoryDetailsVisible(true);
+    setDirectoryDetailsVisible(false);
     setRunResultDirectory(selected);
     setDetectionState({ status: "scanning", directory: selected });
     setRequiredPaths({ ...emptyRequiredFieldState });
@@ -783,96 +793,140 @@ function App() {
               <p>{t("welcome.description")}</p>
             </div>
 
-            <div className="feature-grid">
-              <article className="feature-card">
-                <h3>{welcomeState.title}</h3>
-                <p>{welcomeState.description}</p>
-                <div className="status-chip-group">
-                  <span
-                    className={
-                      welcomeState.mode === "found"
-                        ? "status-chip status-chip-ready"
-                        : welcomeState.mode === "loading"
-                          ? "status-chip status-chip-running"
-                          : "status-chip"
-                    }
-                  >
-                    {welcomeState.mode === "found"
-                      ? t("welcome.discovery.statusFound")
-                      : welcomeState.mode === "empty"
-                        ? t("welcome.discovery.statusEmpty")
-                        : welcomeState.mode === "missing"
-                          ? t("welcome.discovery.statusMissing")
-                          : welcomeState.mode === "failure"
-                            ? t("welcome.discovery.statusFailed")
-                            : t("welcome.discovery.statusLoading")}
-                  </span>
+            <article className="spotlight-card">
+              <div className="spotlight-card-header">
+                <div>
+                  <h3>{welcomeState.title}</h3>
+                  <p>{welcomeState.description}</p>
                 </div>
-              </article>
-              <article className="feature-card">
-                <h3>{t("welcome.cards.inbox.title")}</h3>
-                <p>{t("welcome.cards.inbox.body")}</p>
-                {inboxPath && <PathDisplay path={inboxPath} />}
-              </article>
-              <article className="feature-card">
-                <h3>{t("welcome.cards.recentRun.title")}</h3>
-                <p>{t("welcome.cards.recentRun.body")}</p>
-                {latestInboxResult ? (
-                  <PathGroup
-                    label={t("welcome.cards.recentRun.directoryLabel")}
-                    path={latestInboxResult.runResultDirectory}
-                  />
-                ) : (
-                  <span>{t("welcome.cards.recentRun.empty")}</span>
-                )}
-              </article>
-            </div>
+                <span
+                  className={
+                    welcomeState.mode === "found"
+                      ? "status-chip status-chip-ready"
+                      : welcomeState.mode === "loading"
+                        ? "status-chip status-chip-running"
+                        : welcomeState.mode === "failure"
+                          ? "status-chip status-chip-warning"
+                          : "status-chip"
+                  }
+                >
+                  {welcomeState.mode === "found"
+                    ? t("welcome.discovery.statusFound")
+                    : welcomeState.mode === "empty"
+                      ? t("welcome.discovery.statusEmpty")
+                      : welcomeState.mode === "missing"
+                        ? t("welcome.discovery.statusMissing")
+                        : welcomeState.mode === "failure"
+                          ? t("welcome.discovery.statusFailed")
+                          : t("welcome.discovery.statusLoading")}
+                </span>
+              </div>
 
-            <div className="panel-actions">
-              {welcomeState.mode === "found" ? (
-                <>
+              {latestInboxResult && welcomeState.mode === "found" && (
+                <RunStatusCard
+                  directory={latestInboxResult.runResultDirectory}
+                  statusLabel={t("runStatus.ready.label")}
+                  statusHint={t("welcome.discovery.readyHint")}
+                  tone="success"
+                  actionLabel={t("welcome.discovery.readyAction")}
+                  title={t("welcome.spotlight.currentRunTitle")}
+                  directoryLabel={t("welcome.spotlight.directoryLabel")}
+                  sourceLabel={t("welcome.spotlight.sourceInbox")}
+                />
+              )}
+
+              {welcomeState.mode !== "found" && (
+                <Callout
+                  tone={
+                    welcomeState.mode === "failure" ? "warning" : "neutral"
+                  }
+                >
+                  {welcomeState.mode === "missing"
+                    ? t("welcome.discovery.missingHint")
+                    : welcomeState.mode === "empty"
+                      ? t("welcome.discovery.emptyHint")
+                      : welcomeState.mode === "failure"
+                        ? t("welcome.discovery.failedHint")
+                        : t("welcome.discovery.loadingHint")}
+                </Callout>
+              )}
+
+              <div className="panel-actions">
+                {welcomeState.mode === "found" ? (
                   <button
                     className="primary-button"
                     type="button"
                     onClick={useLatestRunResult}
                   >
-                    {t("welcome.actions.useLatest")}
+                    {t("welcome.actions.primaryFound")}
                   </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={handleWelcomeChooseDirectory}
-                  >
-                    {t("welcome.actions.chooseDirectory")}
-                  </button>
-                  <button
-                    className="tertiary-button"
-                    type="button"
-                    onClick={handleWelcomeManualMode}
-                  >
-                    {t("welcome.actions.advancedManual")}
-                  </button>
-                </>
-              ) : (
-                <>
+                ) : (
                   <button
                     className="primary-button"
                     type="button"
                     onClick={handleWelcomeChooseDirectory}
                     disabled={welcomeState.mode === "loading"}
                   >
-                    {t("welcome.actions.chooseDirectory")}
+                    {t("welcome.actions.primaryImport")}
                   </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={handleWelcomeManualMode}
-                  >
-                    {t("welcome.actions.advancedManual")}
-                  </button>
-                </>
-              )}
-            </div>
+                )}
+
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() =>
+                    setWelcomeDetailsVisible((current) => !current)
+                  }
+                  disabled={welcomeState.mode === "loading"}
+                >
+                  {welcomeDetailsVisible
+                    ? t("welcome.actions.hideDetails")
+                    : t("welcome.actions.viewDetails")}
+                </button>
+              </div>
+            </article>
+
+            {welcomeDetailsVisible && (
+              <div className="feature-grid">
+                <article className="feature-card">
+                  <h3>{t("welcome.cards.inbox.title")}</h3>
+                  <p>{t("welcome.cards.inbox.body")}</p>
+                  {inboxPath && <PathDisplay path={inboxPath} />}
+                </article>
+                <article className="feature-card">
+                  <h3>{t("welcome.cards.recentRun.title")}</h3>
+                  <p>{t("welcome.cards.recentRun.body")}</p>
+                  {latestInboxResult ? (
+                    <PathGroup
+                      label={t("welcome.cards.recentRun.directoryLabel")}
+                      path={latestInboxResult.runResultDirectory}
+                    />
+                  ) : (
+                    <span>{t("welcome.cards.recentRun.empty")}</span>
+                  )}
+                </article>
+                <article className="feature-card">
+                  <h3>{t("welcome.cards.manual.title")}</h3>
+                  <p>{t("welcome.cards.manual.body")}</p>
+                  <div className="panel-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={handleWelcomeChooseDirectory}
+                    >
+                      {t("welcome.actions.chooseDirectory")}
+                    </button>
+                    <button
+                      className="tertiary-button"
+                      type="button"
+                      onClick={handleWelcomeManualMode}
+                    >
+                      {t("welcome.actions.advancedManual")}
+                    </button>
+                  </div>
+                </article>
+              </div>
+            )}
           </section>
         )}
 
@@ -886,98 +940,53 @@ function App() {
               </div>
               <div className="status-chip-group">
                 <span className="status-chip">
-                  {t("inputs.requiredStatus", [
-                    String(requiredReadyCount),
-                    String(requiredFieldKeys.length),
-                  ])}
-                </span>
-                <span className="status-chip">
-                  {t("inputs.optionalStatus", [String(selectedOptionalCount)])}
-                </span>
-                <span
-                  className={
-                    formValid ? "status-chip status-chip-ready" : "status-chip"
-                  }
-                >
-                  {t(
-                    formValid
-                      ? "inputs.formStatusReady"
-                      : "inputs.formStatusBlocked",
-                  )}
+                  {inputMode === "directory"
+                    ? t(`runStatus.${currentRunStatusKey}.label`)
+                    : t("inputs.manualModeBadge")}
                 </span>
               </div>
             </header>
 
-            <div className="mode-switch" role="tablist" aria-label={t("inputs.modeTitle")}>
-              <button
-                type="button"
-                className={
-                  inputMode === "directory" ? "mode-button active" : "mode-button"
-                }
-                onClick={() => switchInputMode("directory")}
-              >
-                <span>{t("inputs.modes.directory.label")}</span>
-                <small>{t("inputs.modes.directory.hint")}</small>
-              </button>
-              <button
-                type="button"
-                className={
-                  inputMode === "manual" ? "mode-button active" : "mode-button"
-                }
-                onClick={() => switchInputMode("manual")}
-              >
-                <span>{t("inputs.modes.manual.label")}</span>
-                <small>{t("inputs.modes.manual.hint")}</small>
-              </button>
+            <div className="mode-summary-card">
+              <div>
+                <strong>
+                  {inputMode === "directory"
+                    ? t("inputs.modes.directory.label")
+                    : t("inputs.modes.manual.label")}
+                </strong>
+                <p>
+                  {inputMode === "directory"
+                    ? t("inputs.modeSummary.directory")
+                    : t("inputs.modeSummary.manual")}
+                </p>
+              </div>
+              {inputMode === "directory" ? (
+                <button
+                  className="tertiary-button"
+                  type="button"
+                  onClick={() => switchInputMode("manual")}
+                >
+                  {t("inputs.directoryImport.useAdvancedAction")}
+                </button>
+              ) : (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => switchInputMode("directory")}
+                >
+                  {t("inputs.backToAutoAction")}
+                </button>
+              )}
             </div>
 
             <div className="input-sections">
               {inputMode === "directory" ? (
                 <>
-                  {showInboxCompactCard && detectionState.status === "ready" ? (
-                    <section className="input-section">
-                      <h3>{t("inputs.latestResult.title")}</h3>
-                      <p>{t("inputs.latestResult.description")}</p>
-                      <RunStatusCard
-                        directory={runResultDirectory}
-                        statusLabel={t(`runStatus.${currentRunStatusKey}.label`)}
-                        statusHint={t(`runStatus.${currentRunStatusKey}.hint`)}
-                        tone={currentRunStatusTone}
-                        actionLabel={
-                          currentRunStatusKey === "ready"
-                            ? t("inputs.latestResult.nextActionBuild")
-                            : t("inputs.latestResult.nextActionFix")
-                        }
-                      />
-                      <div className="panel-actions">
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          onClick={() => setDirectoryDetailsVisible(true)}
-                        >
-                          {t("inputs.latestResult.showDetails")}
-                        </button>
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          onClick={handleWelcomeChooseDirectory}
-                        >
-                          {t("inputs.latestResult.reselectDirectory")}
-                        </button>
-                        <button
-                          className="tertiary-button"
-                          type="button"
-                          onClick={() => switchInputMode("manual")}
-                        >
-                          {t("inputs.latestResult.advancedManual")}
-                        </button>
-                      </div>
-                    </section>
-                  ) : (
-                    <section className="input-section">
-                      <h3>{t("inputs.directoryImport.title")}</h3>
-                      <p>{t("inputs.directoryImport.description")}</p>
+                  <section className="input-section">
+                    <h3>{t("inputs.directoryImport.title")}</h3>
+                    <p>{t("inputs.directoryImport.description")}</p>
 
+                    {!usingRunResultDirectory && (
                       <DirectoryField
                         label={t("inputs.directoryImport.label")}
                         hint={t("inputs.directoryImport.hint")}
@@ -986,36 +995,125 @@ function App() {
                         onPick={chooseRunResultDirectory}
                         onClear={clearRunResultDirectory}
                       />
+                    )}
 
-                      <div className="status-chip-group">
-                        <span
-                          className={
-                            detectionState.status === "ready" &&
-                            requiredReadyCount === requiredFieldKeys.length
-                              ? "status-chip status-chip-ready"
-                              : detectionState.status === "failure"
-                                ? "status-chip status-chip-warning"
-                                : "status-chip"
+                    {usingRunResultDirectory && detectionState.status !== "failure" && (
+                      <>
+                        <RunStatusCard
+                          directory={runResultDirectory}
+                          statusLabel={t(`runStatus.${currentRunStatusKey}.label`)}
+                          statusHint={t(`runStatus.${currentRunStatusKey}.hint`)}
+                          tone={currentRunStatusTone}
+                          actionLabel={
+                            currentRunStatusKey === "ready"
+                              ? t("inputs.latestResult.nextActionBuild")
+                              : t("inputs.latestResult.nextActionFix")
                           }
-                        >
-                          {detectedDirectoryStatusLabel}
-                        </span>
-                        {usingRunResultDirectory && (
-                          <span className="status-chip">
-                            {directoryOrigin === "inbox"
-                              ? t("inputs.latestResult.detectedLabel")
-                              : t("inputs.directoryImport.directorySelected")}
-                          </span>
-                        )}
-                      </div>
+                          title={
+                            showInboxCompactCard
+                              ? t("inputs.latestResult.title")
+                              : t("inputs.directoryImport.detectedCardTitle")
+                          }
+                          sourceLabel={
+                            directoryOrigin === "inbox"
+                              ? t("inputs.latestResult.cardSourceInbox")
+                              : t("inputs.directoryImport.cardSourceManual")
+                          }
+                        />
 
-                      {detectionState.status === "scanning" && (
-                        <Callout tone="neutral">
-                          {t("inputs.directoryImport.scanningNotice")}
-                        </Callout>
+                        <div className="panel-actions">
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={chooseRunResultDirectory}
+                          >
+                            {t("inputs.latestResult.reselectDirectory")}
+                          </button>
+                          <button
+                            className="tertiary-button"
+                            type="button"
+                            onClick={() =>
+                              setDirectoryDetailsVisible((current) => !current)
+                            }
+                          >
+                            {directoryDetailsVisible
+                              ? t("inputs.directoryImport.hideDetails")
+                              : t("inputs.latestResult.showDetails")}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="status-chip-group">
+                      <span
+                        className={
+                          detectionState.status === "ready" &&
+                          requiredReadyCount === requiredFieldKeys.length
+                            ? "status-chip status-chip-ready"
+                            : detectionState.status === "failure"
+                              ? "status-chip status-chip-warning"
+                              : "status-chip"
+                        }
+                      >
+                        {detectedDirectoryStatusLabel}
+                      </span>
+                      {usingRunResultDirectory && (
+                        <span className="status-chip">
+                          {directoryOrigin === "inbox"
+                            ? t("inputs.latestResult.detectedLabel")
+                            : t("inputs.directoryImport.directorySelected")}
+                        </span>
+                      )}
+                    </div>
+
+                    {detectionState.status === "scanning" && (
+                      <Callout tone="neutral">
+                        {t("inputs.directoryImport.scanningNotice")}
+                      </Callout>
+                    )}
+
+                    {detectionState.status === "ready" &&
+                      detectionState.result.missingRequiredFields.length > 0 && (
+                        <div className="directory-followup">
+                          <Callout tone="warning">
+                            <strong>{t("inputs.directoryImport.issuesTitle")}</strong>
+                            <span>{t("inputs.directoryImport.detectedIncompleteHelp")}</span>
+                            <ul className="issue-list">
+                              {detectionIssues.map((issue) => (
+                                <li key={issue}>{issue}</li>
+                              ))}
+                            </ul>
+                          </Callout>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => switchInputMode("manual")}
+                          >
+                            {t("inputs.directoryImport.useAdvancedAction")}
+                          </button>
+                        </div>
                       )}
 
-                      {usingRunResultDirectory && detectionState.status !== "failure" && (
+                    {detectionState.status === "failure" && (
+                      <div className="directory-followup">
+                        <Callout tone="warning">
+                          <strong>{t("inputs.directoryImport.scanFailedTitle")}</strong>
+                          <span>{t("inputs.directoryImport.scanFailed")}</span>
+                          <small>{detectionState.message}</small>
+                        </Callout>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => switchInputMode("manual")}
+                        >
+                          {t("inputs.directoryImport.useAdvancedAction")}
+                        </button>
+                      </div>
+                    )}
+
+                    {usingRunResultDirectory &&
+                      detectionState.status === "ready" &&
+                      directoryDetailsVisible && (
                         <div className="inventory-grid">
                           <div className="inventory-panel">
                             <h3>{t("inputs.directoryImport.detectedPrimaryTitle")}</h3>
@@ -1028,7 +1126,9 @@ function App() {
                                     path={requiredPaths[key]}
                                     emptyText={t("inputs.directoryImport.notDetected")}
                                     error={
-                                      !requiredPaths[key] ? validationErrors[key] : undefined
+                                      !requiredPaths[key]
+                                        ? validationErrors[key]
+                                        : undefined
                                     }
                                   />
                                 </li>
@@ -1054,62 +1154,26 @@ function App() {
                         </div>
                       )}
 
-                      {detectionState.status === "ready" &&
-                        detectionState.result.warnings.length > 0 && (
-                          <div className="inventory-panel">
-                            <h3>{t("inputs.directoryImport.warningsTitle")}</h3>
-                            <ul className="warning-list">
-                              {directoryWarnings.map((warning) => (
-                                <li key={warning.summary} className="warning-item">
-                                  <strong>{warning.summary}</strong>
-                                  <div className="warning-path-list">
-                                    {warning.candidatePaths.map((candidatePath) => (
-                                      <PathDisplay
-                                        key={candidatePath}
-                                        path={candidatePath}
-                                      />
-                                    ))}
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                      {detectionState.status === "ready" &&
-                        detectionState.result.missingRequiredFields.length > 0 && (
-                          <div className="directory-followup">
-                            <Callout tone="warning">
-                              {t("inputs.directoryImport.detectedIncompleteHelp")}
-                            </Callout>
-                            <button
-                              className="secondary-button"
-                              type="button"
-                              onClick={() => switchInputMode("manual")}
-                            >
-                              {t("inputs.directoryImport.useAdvancedAction")}
-                            </button>
-                          </div>
-                        )}
-
-                      {detectionState.status === "failure" && (
-                        <div className="directory-followup">
-                          <Callout tone="warning">
-                            <strong>{t("inputs.directoryImport.scanFailedTitle")}</strong>
-                            <span>{t("inputs.directoryImport.scanFailed")}</span>
-                            <small>{detectionState.message}</small>
-                          </Callout>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            onClick={() => switchInputMode("manual")}
-                          >
-                            {t("inputs.directoryImport.useAdvancedAction")}
-                          </button>
+                    {directoryDetailsVisible &&
+                      detectionState.status === "ready" &&
+                      detectionState.result.warnings.length > 0 && (
+                        <div className="inventory-panel">
+                          <h3>{t("inputs.directoryImport.warningsTitle")}</h3>
+                          <ul className="warning-list">
+                            {directoryWarnings.map((warning) => (
+                              <li key={warning.summary} className="warning-item">
+                                <strong>{warning.summary}</strong>
+                                <div className="warning-path-list">
+                                  {warning.candidatePaths.map((candidatePath) => (
+                                    <PathDisplay key={candidatePath} path={candidatePath} />
+                                  ))}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
-                    </section>
-                  )}
+                  </section>
                 </>
               ) : (
                 <>
@@ -1121,6 +1185,15 @@ function App() {
                         {t("inputs.manualSectionDirectoryNotice")}
                       </Callout>
                     )}
+                    <div className="panel-actions">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => switchInputMode("directory")}
+                      >
+                        {t("inputs.backToAutoAction")}
+                      </button>
+                    </div>
                     <div className="field-list">
                       {requiredFieldKeys.map((key) => (
                         <PathField
@@ -1189,15 +1262,6 @@ function App() {
               >
                 {t("inputs.primaryAction")}
               </button>
-              {inputMode === "directory" && (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => switchInputMode("manual")}
-                >
-                  {t("inputs.directoryImport.useAdvancedAction")}
-                </button>
-              )}
               <button
                 className="tertiary-button"
                 type="button"
@@ -1232,86 +1296,21 @@ function App() {
               </span>
             </header>
 
-            <div className="build-grid">
-              <article
-                className={
-                  buildRun.status === "failure"
-                    ? "build-card build-card-warning"
-                    : "build-card active"
-                }
-              >
-                <span>{t("build.cards.review.title")}</span>
-                <strong>
-                  {buildRun.status === "failure"
-                    ? t("build.cards.review.stateNeedsAttention")
-                    : buildRun.status === "running"
-                      ? t("build.cards.review.stateLocked")
-                      : buildRun.status === "success"
-                        ? t("build.cards.review.stateConfirmed")
-                        : t("build.cards.review.stateReady")}
-                </strong>
-                <p>{t("build.cards.review.body")}</p>
-              </article>
-              <article
-                className={
-                  buildRun.status === "running"
-                    ? "build-card active"
-                    : buildRun.status === "failure"
-                      ? "build-card build-card-warning"
-                      : buildRun.status === "success"
-                        ? "build-card build-card-success"
-                        : "build-card"
-                }
-              >
-                <span>{t("build.cards.engine.title")}</span>
-                <strong>
-                  {buildRun.status === "running"
-                    ? t("build.cards.engine.stateRunning")
-                    : buildRun.status === "failure"
-                      ? t("build.cards.engine.stateFailed")
-                      : buildRun.status === "success"
-                        ? t("build.cards.engine.stateReady")
-                        : t("build.cards.engine.stateWaiting")}
-                </strong>
-                <p>{t("build.cards.engine.body")}</p>
-              </article>
-              <article
-                className={
-                  buildRun.status === "success"
-                    ? "build-card build-card-success"
-                    : buildRun.status === "failure"
-                      ? "build-card build-card-warning"
-                      : "build-card"
-                }
-              >
-                <span>{t("build.cards.result.title")}</span>
-                <strong>
-                  {buildRun.status === "success"
-                    ? t("build.cards.result.stateReady")
-                    : buildRun.status === "running"
-                      ? t("build.cards.result.statePreparing")
-                      : buildRun.status === "failure"
-                        ? t("build.cards.result.stateBlocked")
-                        : t("build.cards.result.stateReserved")}
-                </strong>
-                <p>{t("build.cards.result.body")}</p>
-              </article>
-            </div>
-
-            <div className="summary-strip">
-              <span>
-                {preflightState.runResultDirectory
-                  ? t("build.summary.runResultDirectorySelected")
-                  : t("build.summary.manualSource")}
-              </span>
-              <span>
-                {t("build.summary.requiredFiles", [String(requiredReadyCount)])}
-              </span>
-              <span>
-                {t("build.summary.optionalFiles", [String(selectedOptionalCount)])}
-              </span>
-              <span>{t("build.summary.outputDirectory")}</span>
-            </div>
+            <Callout
+              tone={
+                buildRun.status === "failure"
+                  ? "warning"
+                  : buildRun.status === "success"
+                    ? "success"
+                    : "neutral"
+              }
+            >
+              {buildRun.status === "failure"
+                ? t("build.focus.failure")
+                : buildRun.status === "success"
+                  ? t("build.focus.success")
+                  : t("build.focus.idle")}
+            </Callout>
 
             <div className="build-summary-grid">
               <RunStatusCard
@@ -1442,88 +1441,116 @@ function App() {
               </span>
             </header>
 
-            <div className="result-section-stack">
-              <section className="inventory-panel result-section-panel">
-                <h3>{t("result.cards.packDir.title")}</h3>
-                <p>{t("result.cards.packDir.body")}</p>
-                <div className="result-path-grid">
-                  <PathGroup
-                    label={t("result.cards.packDir.title")}
-                    path={resultData.packDir}
-                  />
-                  <PathGroup
-                    label={t("result.cards.index.title")}
-                    path={resultData.indexPath}
-                  />
-                  <PathGroup
-                    label={t("result.cards.report.title")}
-                    path={resultData.reportPath}
-                  />
+            <section className="delivery-focus-card">
+              <div className="delivery-focus-header">
+                <div>
+                  <h3>{t("result.deliveryCard.title")}</h3>
+                  <p>{t("result.deliveryCard.body")}</p>
                 </div>
-              </section>
+                <span className="status-chip status-chip-ready">
+                  {t("result.deliveryCard.status")}
+                </span>
+              </div>
+              <PathGroup
+                label={t("result.deliveryCard.directoryLabel")}
+                path={resultData.packDir}
+              />
+              <div className="panel-actions">
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={handleOpenFolder}
+                >
+                  {t("result.openFolderAction")}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleCopyPath}
+                >
+                  {t("result.copyPathAction")}
+                </button>
+                <button
+                  className="tertiary-button"
+                  type="button"
+                  onClick={() =>
+                    setResultDetailsVisible((current) => !current)
+                  }
+                >
+                  {resultDetailsVisible
+                    ? t("result.hideDetailsAction")
+                    : t("result.showDetailsAction")}
+                </button>
+              </div>
+            </section>
 
-              <div className="inventory-grid">
-                <div className="inventory-panel result-section-panel">
-                  <h3>{t("result.primaryFilesTitle")}</h3>
-                  <ul className="path-list">
-                    {Object.entries(resultData.primaryFiles).map(([key, value]) => (
-                      <li key={key}>
-                        <PathGroup
-                          label={t(`result.primaryFiles.${key}`)}
-                          path={value}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            {resultDetailsVisible && (
+              <div className="result-section-stack">
+                <section className="inventory-panel result-section-panel">
+                  <h3>{t("result.cards.packDir.title")}</h3>
+                  <p>{t("result.cards.packDir.body")}</p>
+                  <div className="result-path-grid">
+                    <PathGroup
+                      label={t("result.cards.packDir.title")}
+                      path={resultData.packDir}
+                    />
+                    <PathGroup
+                      label={t("result.cards.index.title")}
+                      path={resultData.indexPath}
+                    />
+                    <PathGroup
+                      label={t("result.cards.report.title")}
+                      path={resultData.reportPath}
+                    />
+                  </div>
+                </section>
 
-                <div className="inventory-panel result-section-panel">
-                  <h3>{t("result.supportingFilesTitle")}</h3>
-                  <ul className="path-list">
-                    {optionalFieldKeys.map((key) => {
-                      const supportingKey =
-                        key === "publicKey"
-                          ? "public_key"
-                          : key === "runtimeEvents"
-                            ? "runtime_events"
-                            : "manifest";
-                      const value = resultData.supportingFiles[supportingKey];
-
-                      return (
+                <div className="inventory-grid">
+                  <div className="inventory-panel result-section-panel">
+                    <h3>{t("result.primaryFilesTitle")}</h3>
+                    <ul className="path-list">
+                      {Object.entries(resultData.primaryFiles).map(([key, value]) => (
                         <li key={key}>
                           <PathGroup
-                            label={t(`inputs.fields.${key}.label`)}
-                            path={value || ""}
-                            emptyText={t("result.optionalNotIncluded")}
+                            label={t(`result.primaryFiles.${key}`)}
+                            path={value}
                           />
                         </li>
-                      );
-                    })}
-                  </ul>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="inventory-panel result-section-panel">
+                    <h3>{t("result.supportingFilesTitle")}</h3>
+                    <ul className="path-list">
+                      {optionalFieldKeys.map((key) => {
+                        const supportingKey =
+                          key === "publicKey"
+                            ? "public_key"
+                            : key === "runtimeEvents"
+                              ? "runtime_events"
+                              : "manifest";
+                        const value = resultData.supportingFiles[supportingKey];
+
+                        return (
+                          <li key={key}>
+                            <PathGroup
+                              label={t(`inputs.fields.${key}.label`)}
+                              path={value || ""}
+                              emptyText={t("result.optionalNotIncluded")}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {notice && screen === "result" && (
               <Callout tone={notice.tone}>{notice.text}</Callout>
             )}
-
-            <div className="panel-actions">
-              <button
-                className="primary-button"
-                type="button"
-                onClick={handleOpenFolder}
-              >
-                {t("result.openFolderAction")}
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={handleCopyPath}
-              >
-                {t("result.copyPathAction")}
-              </button>
-            </div>
           </section>
         )}
 

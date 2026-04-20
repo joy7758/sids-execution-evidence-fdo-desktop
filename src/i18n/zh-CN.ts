@@ -44,9 +44,13 @@ const zhCN = {
     kicker: "运行结果收件箱",
     title: "智能体运行监测",
     description:
-      "软件会先检查本地运行结果收件箱，尝试自动发现最近一次完整运行结果。找到后，你可以直接进入审阅包流程；找不到时，再手动选择目录或文件。",
+      "先看系统是否已经发现最近一次可用运行结果。只有在找不到结果，或识别不完整时，才需要手动补路径。",
     actions: {
       useLatest: "使用最近运行结果",
+      primaryFound: "生成审阅包",
+      primaryImport: "导入运行结果",
+      viewDetails: "查看详情",
+      hideDetails: "收起详情",
       chooseDirectory: "选择运行结果目录",
       advancedManual: "高级：手动选择文件",
     },
@@ -68,6 +72,17 @@ const zhCN = {
       missingTitle: "尚未发现运行结果收件箱",
       missingDescription: "默认收件箱为 {0}，你也可以直接选择一个运行结果目录。",
       failedTitle: "暂时无法自动检查收件箱",
+      readyHint: "当前最近一次运行结果已经完整，可以直接进入生成前确认。",
+      readyAction: "下一步：确认输出位置并生成审阅包",
+      missingHint: "先导入一个运行结果目录，再继续后续步骤。",
+      emptyHint: "收件箱里暂时没有完整结果。你可以先导入目录，必要时再手动修正。",
+      failedHint: "自动发现当前不可用。你仍然可以手动导入运行结果目录继续。",
+      loadingHint: "系统正在检查默认收件箱，确认是否已有最近一次完整运行结果。",
+    },
+    spotlight: {
+      currentRunTitle: "当前可用运行结果",
+      directoryLabel: "最近运行结果",
+      sourceInbox: "来源：运行结果收件箱",
     },
     cards: {
       inbox: {
@@ -80,14 +95,24 @@ const zhCN = {
         directoryLabel: "最近运行结果目录",
         empty: "当前还没有可直接使用的完整运行结果。",
       },
+      manual: {
+        title: "备用入口",
+        body: "只有在自动发现不完整，或你需要修正路径时，才使用目录导入或高级手动选择。",
+      },
     },
   },
   inputs: {
     kicker: "输入准备",
-    title: "先导入运行结果目录，再生成审阅包",
+    title: "确认当前运行结果",
     description:
-      "默认路径是导入一个运行结果目录并自动识别三件套；如果识别不完整，再切换到高级手动选择修正。",
+      "先看当前运行结果是否完整、是否可继续。技术文件默认折叠，只有在需要修正时再展开查看。",
     modeTitle: "输入方式",
+    modeSummary: {
+      directory: "默认路径是自动识别当前运行结果。只有识别不完整时，才需要切换到高级手动选择。",
+      manual: "你正在使用高级手动选择修正文件路径。修正完成后，可以返回自动识别路径继续。",
+    },
+    manualModeBadge: "当前为高级手动选择",
+    backToAutoAction: "返回自动识别",
     modes: {
       directory: {
         label: "导入运行结果目录",
@@ -139,6 +164,8 @@ const zhCN = {
       statusIncomplete: "自动识别未完成",
       statusFailed: "目录识别失败",
       directorySelected: "目录已选择",
+      detectedCardTitle: "当前运行结果",
+      cardSourceManual: "来源：手动导入目录",
       scanningNotice: "正在扫描所选目录，并自动识别可用的证据文件。",
       detectedPrimaryTitle: "已识别的主文件",
       detectedPrimaryDescription:
@@ -150,9 +177,11 @@ const zhCN = {
       optionalNotDetected: "当前目录中未识别到该附属文件",
       warningsTitle: "识别提醒",
       multipleCandidates: "发现多个 {0} 候选文件，当前使用 {1}。",
+      issuesTitle: "当前需要处理的问题",
       detectedIncompleteHelp:
         "自动识别未完成。请检查缺失项，或切换到高级手动选择进行修正。",
       useAdvancedAction: "切换到高级手动选择进行修正",
+      hideDetails: "收起识别详情",
       scanFailedTitle: "目录识别没有完成",
       scanFailed:
         "当前无法从这个目录中识别出完整结果。请检查目录内容，或切换到高级手动选择。",
@@ -161,6 +190,11 @@ const zhCN = {
         "目录识别到了部分文件，但仍缺少必填项。请先修正后再继续。",
       fixMissingNotice:
         "当前目录识别未完成，请先补齐缺少的文件，或切换到高级手动选择进行修正。",
+      missingFields: {
+        bundle: "缺少证据包文件",
+        receipt: "缺少校验回执文件",
+        summary: "缺少摘要文件",
+      },
     },
     outputSectionTitle: "输出目录",
     outputSectionDescription: "生成审阅包之前，先明确要写入的目标目录。",
@@ -224,9 +258,9 @@ const zhCN = {
   },
   build: {
     kicker: "生成前预检",
-    title: "核对输入，然后交给本地引擎生成审阅包",
+    title: "确认后生成审阅包",
     description:
-      "先确认当前运行结果来源、输出位置和状态摘要，再点击主按钮生成审阅包。",
+      "这里只确认当前运行结果、保存位置和状态摘要。技术路径默认折叠，需要时再展开查看。",
     statusIdle: "准备生成",
     statusRunning: "正在生成",
     statusSuccess: "生成成功",
@@ -237,6 +271,11 @@ const zhCN = {
     secondaryAction: "返回输入页",
     runningCallout:
       "正在调用本地 Review Pack 引擎。请保持当前窗口开启，等待结果返回。",
+    focus: {
+      idle: "当前信息已经齐全。确认无误后，直接生成审阅包。",
+      success: "审阅包已经生成成功。你可以直接进入结果页查看交付结果。",
+      failure: "这次生成没有完成。请先看结果说明，再决定是否重试。",
+    },
     failure: {
       title: "这次生成没有完成",
       detailsTitle: "机器可读错误详情",
@@ -318,9 +357,9 @@ const zhCN = {
     emptyTitle: "先完成一次审阅包生成",
     emptyDescription:
       "当前还没有可展示的生成结果。先回到生成页运行一次本地引擎，再回来查看输出。",
-    successTitle: "审阅包已经生成完成",
+    successTitle: "审阅包已生成",
     successDescription:
-      "这次生成已经返回稳定结果。你可以直接打开输出目录，或复制审阅包路径给其他人。",
+      "第一屏只展示最重要的交付结果：保存位置，以及接下来如何打开或转交。",
     failureTitle: "本地引擎返回了失败结果",
     failureDetailsTitle: "失败信息",
     errorCodeLabel: "错误代码",
@@ -342,7 +381,15 @@ const zhCN = {
     openFolderFailed: "当前无法打开审阅包目录，请确认本地文件仍然存在。",
     copyPathSuccess: "已复制审阅包目录路径。",
     copyPathFailed: "当前无法复制路径，请重试。",
+    showDetailsAction: "查看输出详情",
+    hideDetailsAction: "收起输出详情",
     goToBuildAction: "返回生成页",
+    deliveryCard: {
+      title: "正式交付结果",
+      body: "这里先展示本次审阅包的保存位置。技术文件和中间文件需要时再展开查看。",
+      status: "可交付",
+      directoryLabel: "保存位置",
+    },
     cards: {
       packDir: {
         title: "审阅包目录",

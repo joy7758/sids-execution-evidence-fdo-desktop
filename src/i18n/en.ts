@@ -40,6 +40,11 @@ const en = {
     notProvided: "Not attached this time",
     retry: "Retry",
   },
+  flowActions: {
+    generateReviewPack: "Generate Review Pack",
+    handleRun: "Handle this run",
+    backToRuns: "Back to recent runs",
+  },
   welcome: {
     kicker: "Run inbox",
     title: "Agent Run Monitoring",
@@ -77,7 +82,7 @@ const en = {
       failedTitle: "The inbox could not be checked right now",
       readyHint:
         "The latest run result is complete and can move directly into build confirmation.",
-      readyAction: "Next: confirm the output location and generate Review Pack",
+      readyAction: "Generate Review Pack",
       missingHint: "Import one run result directory first, then continue.",
       emptyHint:
         "The inbox does not contain a complete result yet. Import a directory now, and use manual correction only if needed.",
@@ -118,8 +123,8 @@ const en = {
       sourceLocal: "Local run result",
       sourceFallback: "Run result",
       actions: {
-        useRun: "Use this run",
-        fixRun: "Fix this run",
+        useRun: "Generate Review Pack",
+        fixRun: "Handle this run",
         viewDetails: "View details",
       },
       status: {
@@ -272,8 +277,8 @@ const en = {
       cardSourceInbox: "Source: run result inbox",
       directoryLabel: "Run result directory",
       actionLabel: "Next step",
-      nextActionBuild: "Choose an output location and continue to Review Pack",
-      nextActionFix: "Correct the missing items before continuing",
+      nextActionBuild: "Generate Review Pack",
+      nextActionFix: "Handle this run",
       showDetails: "View detection details",
       reselectDirectory: "Choose another directory",
       advancedManual: "Advanced: choose files manually",
@@ -331,6 +336,8 @@ const en = {
     outputLabel: "Review pack output directory",
     outputHint: "Choose where the review pack will be saved.",
     outputPlaceholder: "No output directory selected yet",
+    outputReadyNotice:
+      "This run is already complete. Confirm the output location first, then continue to the build confirmation step.",
     primaryAction: "Continue to build",
     secondaryAction: "Back to welcome",
     buildBlockedNotice:
@@ -405,6 +412,8 @@ const en = {
       "The desktop app is calling the local Review Pack engine now. Keep this window open until the result returns.",
     focus: {
       idle: "Everything needed is ready. Confirm it and generate Review Pack.",
+      running:
+        "The local engine is building the Review Pack. Keep this window open until the result returns.",
       success:
         "The review pack has already been generated successfully. Open the result view when you are ready to deliver it.",
       failure: "This build did not finish. Review the result first, then decide whether to retry.",
@@ -542,6 +551,7 @@ const en = {
       "The build result is still available. You can open the Markdown report as a technical format instead.",
     showDetailsAction: "View output details",
     hideDetailsAction: "Hide output details",
+    backToRunsAction: "Back to recent runs",
     goToBuildAction: "Back to build",
     deliveryCard: {
       title: "Delivery result",

@@ -363,6 +363,12 @@ function App() {
     inboxDiscovery.status === "ready"
       ? inboxDiscovery.discovery.recentRuns.slice(0, recentRunDisplayLimit)
       : [];
+  const latestInboxRunItem =
+    inboxDiscovery.status === "ready" && latestInboxResult
+      ? inboxDiscovery.discovery.recentRuns.find(
+          (run) => run.runResultDirectory === latestInboxResult.runResultDirectory,
+        ) ?? null
+      : null;
   const selectedRunDirectory =
     detectionState.status === "ready"
       ? detectionState.result.runResultDirectory
@@ -407,10 +413,8 @@ function App() {
       : t(`runStatus.${currentRunStatusKey}.hint`);
   const currentRunNextActionLabel =
     currentRunStatusKey === "ready"
-      ? formValid
-        ? t("detail.actions.goToBuild")
-        : t("detail.actions.prepareBuild")
-      : t("detail.actions.fixManually");
+      ? t("flowActions.generateReviewPack")
+      : t("flowActions.handleRun");
   const detailJudgmentItems = useMemo(() => {
     const items: string[] = [];
 
@@ -428,6 +432,40 @@ function App() {
 
     return items;
   }, [currentRunItem, currentRunStatusKey, detectionState, t]);
+
+  function routeReadyRunSelection() {
+    setNotice(null);
+
+    if (outputDir.trim()) {
+      setScreen("build");
+      return;
+    }
+
+    setScreen("inputs");
+    setPanelNotice("neutral", t("inputs.outputReadyNotice"));
+  }
+
+  function routeNeedsAttentionRunSelection() {
+    setInputMode("manual");
+    setDirectoryDetailsVisible(true);
+    setScreen("inputs");
+    setPanelNotice("warning", t("inputs.directoryImport.fixMissingNotice"));
+  }
+
+  function continueWithRun(run: RunInboxItem) {
+    setCurrentRunItem(run);
+    activateDetectionResult(run.detection, {
+      origin: "inbox",
+      detailsVisible: run.missingRequiredFields.length > 0,
+    });
+
+    if (run.missingRequiredFields.length === 0) {
+      routeReadyRunSelection();
+      return;
+    }
+
+    routeNeedsAttentionRunSelection();
+  }
 
   const welcomeState = useMemo(() => {
     if (inboxDiscovery.status === "loading") {
@@ -482,7 +520,7 @@ function App() {
         label: t("welcome.recentRuns.status.reviewPackGenerated"),
         hint: t("welcome.recentRuns.statusHints.reviewPackGenerated"),
         tone: "success",
-        primaryActionLabel: t("welcome.recentRuns.actions.useRun"),
+        primaryActionLabel: t("flowActions.generateReviewPack"),
         verificationLabel: t("welcome.recentRuns.verification.hasReceipt"),
         reviewPackLabel: t("welcome.recentRuns.reviewPack.generated"),
       };
@@ -493,7 +531,7 @@ function App() {
         label: t("runStatus.missingBundle.label"),
         hint: t("runStatus.missingBundle.hint"),
         tone: "warning",
-        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        primaryActionLabel: t("flowActions.handleRun"),
         verificationLabel: run.verificationStatus === "hasReceipt"
           ? t("welcome.recentRuns.verification.hasReceipt")
           : t("welcome.recentRuns.verification.missingReceipt"),
@@ -506,7 +544,7 @@ function App() {
         label: t("runStatus.missingReceipt.label"),
         hint: t("runStatus.missingReceipt.hint"),
         tone: "warning",
-        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        primaryActionLabel: t("flowActions.handleRun"),
         verificationLabel: t("welcome.recentRuns.verification.missingReceipt"),
         reviewPackLabel: t("welcome.recentRuns.reviewPack.needsAttention"),
       };
@@ -517,7 +555,7 @@ function App() {
         label: t("runStatus.missingSummary.label"),
         hint: t("runStatus.missingSummary.hint"),
         tone: "warning",
-        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        primaryActionLabel: t("flowActions.handleRun"),
         verificationLabel: run.verificationStatus === "hasReceipt"
           ? t("welcome.recentRuns.verification.hasReceipt")
           : t("welcome.recentRuns.verification.missingReceipt"),
@@ -529,7 +567,7 @@ function App() {
       label: t("runStatus.ready.label"),
       hint: t("welcome.recentRuns.statusHints.ready"),
       tone: "success",
-      primaryActionLabel: t("welcome.recentRuns.actions.useRun"),
+      primaryActionLabel: t("flowActions.generateReviewPack"),
       verificationLabel: t("welcome.recentRuns.verification.hasReceipt"),
       reviewPackLabel: t("welcome.recentRuns.reviewPack.ready"),
     };
@@ -748,32 +786,28 @@ function App() {
   }
 
   function useLatestRunResult() {
+    if (latestInboxRunItem) {
+      continueWithRun(latestInboxRunItem);
+      return;
+    }
+
     if (!latestInboxResult) {
       return;
     }
 
-    setCurrentRunItem(
-      recentRuns.find(
-        (run) => run.runResultDirectory === latestInboxResult.runResultDirectory,
-      ) ?? null,
-    );
+    setCurrentRunItem(null);
     activateDetectionResult(latestInboxResult, {
       origin: "inbox",
       detailsVisible: false,
     });
-    setScreen("inputs");
+    routeReadyRunSelection();
   }
 
   function useInboxRun(
     run: RunInboxItem,
-    options: { detailsVisible: boolean },
+    _options: { detailsVisible: boolean },
   ) {
-    setCurrentRunItem(run);
-    activateDetectionResult(run.detection, {
-      origin: "inbox",
-      detailsVisible: options.detailsVisible || run.missingRequiredFields.length > 0,
-    });
-    setScreen("inputs");
+    continueWithRun(run);
   }
 
   function viewInboxRunDetail(run: RunInboxItem) {
@@ -819,23 +853,15 @@ function App() {
 
   function handleRunDetailPrimaryAction() {
     if (currentRunStatusKey === "ready") {
-      if (formValid) {
-        goToScreen("build");
-      } else {
-        setScreen("inputs");
-      }
+      routeReadyRunSelection();
       return;
     }
 
-    setInputMode("manual");
-    setDirectoryDetailsVisible(true);
-    setScreen("inputs");
+    routeNeedsAttentionRunSelection();
   }
 
   function handleRunDetailAdvancedFix() {
-    setInputMode("manual");
-    setDirectoryDetailsVisible(true);
-    setScreen("inputs");
+    routeNeedsAttentionRunSelection();
   }
 
   async function chooseRequiredFile(key: RequiredFieldKey) {
@@ -1154,7 +1180,7 @@ function App() {
                   statusLabel={t("runStatus.ready.label")}
                   statusHint={t("welcome.discovery.readyHint")}
                   tone="success"
-                  actionLabel={t("welcome.discovery.readyAction")}
+                  actionLabel={t("flowActions.generateReviewPack")}
                   title={t("welcome.spotlight.currentRunTitle")}
                   directoryLabel={t("welcome.spotlight.directoryLabel")}
                   sourceLabel={t("welcome.spotlight.sourceInbox")}
@@ -1184,7 +1210,7 @@ function App() {
                     type="button"
                     onClick={useLatestRunResult}
                   >
-                    {t("welcome.actions.primaryFound")}
+                    {t("flowActions.generateReviewPack")}
                   </button>
                 ) : (
                   <button
@@ -1449,10 +1475,8 @@ function App() {
                 onClick={handleRunDetailPrimaryAction}
               >
                 {currentRunStatusKey === "ready"
-                  ? formValid
-                    ? t("detail.actions.goToBuild")
-                    : t("detail.actions.prepareBuild")
-                  : t("detail.actions.fixManually")}
+                  ? t("flowActions.generateReviewPack")
+                  : t("flowActions.handleRun")}
               </button>
               <button
                 className="secondary-button"
@@ -1461,7 +1485,7 @@ function App() {
               >
                 {t("detail.actions.reselectDirectory")}
               </button>
-              {currentRunStatusKey === "ready" && (
+              {currentRunStatusKey !== "ready" && (
                 <button
                   className="secondary-button"
                   type="button"
@@ -1629,8 +1653,8 @@ function App() {
                           tone={currentRunStatusTone}
                           actionLabel={
                             currentRunStatusKey === "ready"
-                              ? t("inputs.latestResult.nextActionBuild")
-                              : t("inputs.latestResult.nextActionFix")
+                              ? t("flowActions.generateReviewPack")
+                              : t("flowActions.handleRun")
                           }
                           title={
                             showInboxCompactCard
@@ -1919,21 +1943,23 @@ function App() {
               </span>
             </header>
 
-            <Callout
-              tone={
-                buildRun.status === "failure"
-                  ? "warning"
+            {buildRun.status !== "idle" && (
+              <Callout
+                tone={
+                  buildRun.status === "failure"
+                    ? "warning"
+                    : buildRun.status === "success"
+                      ? "success"
+                      : "neutral"
+                }
+              >
+                {buildRun.status === "failure"
+                  ? t("build.focus.failure")
                   : buildRun.status === "success"
-                    ? "success"
-                    : "neutral"
-              }
-            >
-              {buildRun.status === "failure"
-                ? t("build.focus.failure")
-                : buildRun.status === "success"
-                  ? t("build.focus.success")
-                  : t("build.focus.idle")}
-            </Callout>
+                    ? t("build.focus.success")
+                    : t("build.focus.running")}
+              </Callout>
+            )}
 
             <div className="build-summary-grid">
               <RunStatusCard
@@ -1946,7 +1972,7 @@ function App() {
                 actionLabel={
                   buildRun.status === "success"
                     ? t("build.summary.readyAction")
-                    : t("build.summary.buildAction")
+                    : t("flowActions.generateReviewPack")
                 }
                 title={t("build.runCard.title")}
                 directoryLabel={t("build.runCard.directoryLabel")}
@@ -2145,6 +2171,16 @@ function App() {
                   {resultDetailsVisible
                     ? t("result.hideDetailsAction")
                     : t("result.showDetailsAction")}
+                </button>
+              </div>
+
+              <div className="panel-actions">
+                <button
+                  className="tertiary-button"
+                  type="button"
+                  onClick={() => goToScreen("welcome")}
+                >
+                  {t("result.backToRunsAction")}
                 </button>
               </div>
             </section>

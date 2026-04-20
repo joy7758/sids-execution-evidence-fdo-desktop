@@ -100,6 +100,38 @@ const zhCN = {
         body: "只有在自动发现不完整，或你需要修正路径时，才使用目录导入或高级手动选择。",
       },
     },
+    recentRuns: {
+      title: "最近运行",
+      description: "先看最近几次运行的状态，再决定使用哪一次继续生成审阅包。",
+      countLabel: "最近 {0} 条",
+      loading: "正在整理最近运行列表。",
+      empty: "当前还没有可展示的最近运行。",
+      directoryLabel: "运行结果目录",
+      sourceLocal: "本地运行结果",
+      sourceFallback: "运行结果",
+      actions: {
+        useRun: "使用此运行",
+        fixRun: "处理此运行",
+        viewDetails: "查看详情",
+      },
+      status: {
+        reviewPackGenerated: "审阅包已生成",
+      },
+      statusHints: {
+        reviewPackGenerated:
+          "这次运行已经生成过审阅包，仍可继续查看详情或重新进入生成流程。",
+        ready: "这次运行已经完整，可直接继续生成审阅包。",
+      },
+      verification: {
+        hasReceipt: "已有回执",
+        missingReceipt: "缺少回执",
+      },
+      reviewPack: {
+        generated: "审阅包已生成",
+        ready: "可生成",
+        needsAttention: "需处理",
+      },
+    },
   },
   inputs: {
     kicker: "输入准备",

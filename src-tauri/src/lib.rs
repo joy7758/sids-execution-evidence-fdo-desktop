@@ -3,14 +3,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct DetectionWarning {
     kind: String,
     selected_path: String,
     candidate_paths: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct RunResultDetection {
     run_result_directory: String,
     bundle_path: Option<String>,
@@ -24,6 +24,20 @@ struct RunResultDetection {
 }
 
 #[derive(Serialize)]
+struct RunInboxItem {
+    run_id: String,
+    source: String,
+    modified_ms: u64,
+    run_result_directory: String,
+    evidence_completeness: String,
+    verification_status: String,
+    review_pack_status: String,
+    needs_attention: bool,
+    missing_required_fields: Vec<String>,
+    detection: RunResultDetection,
+}
+
+#[derive(Serialize)]
 struct RunInboxDiscovery {
     inbox_path: String,
     inbox_exists: bool,
@@ -31,6 +45,7 @@ struct RunInboxDiscovery {
     latest_complete_modified_ms: Option<u64>,
     incomplete_directory_count: usize,
     scanned_directory_count: usize,
+    recent_runs: Vec<RunInboxItem>,
 }
 
 #[derive(Clone)]
@@ -279,6 +294,11 @@ fn default_run_inbox_path() -> Result<PathBuf, String> {
     Ok(PathBuf::from(home).join("AgentEvidence").join("runs"))
 }
 
+fn review_pack_generated(directory_path: &std::path::Path) -> bool {
+    directory_path.join("review").join("report.pdf").exists()
+        || directory_path.join("review").join("report.md").exists()
+}
+
 #[tauri::command]
 fn detect_run_result_directory(directory: String) -> Result<RunResultDetection, String> {
     let directory_path = PathBuf::from(&directory);
@@ -312,6 +332,7 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
             latest_complete_modified_ms: None,
             incomplete_directory_count: 0,
             scanned_directory_count: 0,
+            recent_runs: Vec::new(),
         });
     }
 
@@ -334,6 +355,7 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
     let mut latest_complete_modified_ms = None;
     let mut incomplete_directory_count = 0usize;
     let mut scanned_directory_count = 0usize;
+    let mut recent_runs = Vec::new();
 
     for entry in entries {
         let entry = entry.map_err(|error| {
@@ -355,8 +377,42 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
             continue;
         };
         let modified_ms = modified_time_millis(&candidate_path);
+        let evidence_complete = detection.missing_required_fields.is_empty();
+        let review_pack_status = if review_pack_generated(&candidate_path) {
+            "generated"
+        } else if evidence_complete {
+            "ready"
+        } else {
+            "needsAttention"
+        };
 
-        if detection.missing_required_fields.is_empty() {
+        let run_id = candidate_path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| candidate_path.to_string_lossy().into_owned());
+
+        recent_runs.push(RunInboxItem {
+            run_id,
+            source: "localRunResult".to_string(),
+            modified_ms,
+            run_result_directory: detection.run_result_directory.clone(),
+            evidence_completeness: if evidence_complete {
+                "complete".to_string()
+            } else {
+                "incomplete".to_string()
+            },
+            verification_status: if detection.receipt_path.is_some() {
+                "hasReceipt".to_string()
+            } else {
+                "missingReceipt".to_string()
+            },
+            review_pack_status: review_pack_status.to_string(),
+            needs_attention: !evidence_complete,
+            missing_required_fields: detection.missing_required_fields.clone(),
+            detection: detection.clone(),
+        });
+
+        if evidence_complete {
             let should_replace = latest_complete_modified_ms
                 .map(|current| modified_ms >= current)
                 .unwrap_or(true);
@@ -370,6 +426,13 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
         }
     }
 
+    recent_runs.sort_by(|left, right| {
+        right
+            .modified_ms
+            .cmp(&left.modified_ms)
+            .then_with(|| left.run_id.cmp(&right.run_id))
+    });
+
     Ok(RunInboxDiscovery {
         inbox_path: inbox_path_string,
         inbox_exists: true,
@@ -377,6 +440,7 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
         latest_complete_modified_ms,
         incomplete_directory_count,
         scanned_directory_count,
+        recent_runs,
     })
 }
 

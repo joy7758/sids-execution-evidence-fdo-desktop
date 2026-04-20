@@ -107,6 +107,39 @@ const en = {
         body: "Use directory import or advanced manual selection only when automatic discovery is incomplete or a path needs correction.",
       },
     },
+    recentRuns: {
+      title: "Recent runs",
+      description:
+        "Start from the latest few runs, compare their status, and choose which run should continue into Review Pack generation.",
+      countLabel: "Latest {0}",
+      loading: "Preparing the recent-run list.",
+      empty: "There are no recent runs to show yet.",
+      directoryLabel: "Run result directory",
+      sourceLocal: "Local run result",
+      sourceFallback: "Run result",
+      actions: {
+        useRun: "Use this run",
+        fixRun: "Fix this run",
+        viewDetails: "View details",
+      },
+      status: {
+        reviewPackGenerated: "Review Pack already generated",
+      },
+      statusHints: {
+        reviewPackGenerated:
+          "This run already produced a Review Pack. You can still inspect it or re-enter the build flow.",
+        ready: "This run is already complete and can continue directly into Review Pack generation.",
+      },
+      verification: {
+        hasReceipt: "Receipt available",
+        missingReceipt: "Receipt missing",
+      },
+      reviewPack: {
+        generated: "Review Pack generated",
+        ready: "Ready to generate",
+        needsAttention: "Needs attention",
+      },
+    },
   },
   inputs: {
     kicker: "Input setup",

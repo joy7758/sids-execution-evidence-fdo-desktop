@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import "./App.css";
 import {
   discoverRunInbox,
+  type RunInboxItem,
   type RunInboxDiscoveryResult,
 } from "./lib/runInbox";
 import {
@@ -83,6 +84,15 @@ type RunStatusKey =
   | "missingReceipt"
   | "missingSummary";
 
+type RunListStatusModel = {
+  label: string;
+  hint: string;
+  tone: NoticeTone;
+  primaryActionLabel: string;
+  verificationLabel: string;
+  reviewPackLabel: string;
+};
+
 const requiredFieldKeys: RequiredFieldKey[] = ["bundle", "receipt", "summary"];
 const optionalFieldKeys: OptionalFieldKey[] = [
   "manifest",
@@ -90,6 +100,7 @@ const optionalFieldKeys: OptionalFieldKey[] = [
   "runtimeEvents",
 ];
 const screenOrder: Screen[] = ["welcome", "inputs", "build", "result"];
+const recentRunDisplayLimit = 5;
 const detectionWarningFieldMap: Record<DetectionWarningKind, FieldKey> = {
   bundle: "bundle",
   receipt: "receipt",
@@ -174,6 +185,18 @@ function inferPdfPath(params: { packDir: string; reportPath: string }) {
   }
 
   return `${params.packDir.replace(/\\/g, "/")}/review/report.pdf`;
+}
+
+function formatRunTimestamp(locale: "zh-CN" | "en", modifiedMs: number) {
+  const formatter = new Intl.DateTimeFormat(locale === "zh-CN" ? "zh-CN" : "en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return formatter.format(new Date(modifiedMs));
 }
 
 function App() {
@@ -329,6 +352,14 @@ function App() {
       : null;
   const inboxPath =
     inboxDiscovery.status === "ready" ? inboxDiscovery.discovery.inboxPath : "";
+  const recentRuns =
+    inboxDiscovery.status === "ready"
+      ? inboxDiscovery.discovery.recentRuns.slice(0, recentRunDisplayLimit)
+      : [];
+  const selectedRunDirectory =
+    detectionState.status === "ready"
+      ? detectionState.result.runResultDirectory
+      : latestInboxResult?.runResultDirectory ?? "";
 
   const currentRunStatusKey = useMemo<RunStatusKey>(() => {
     if (!requiredPaths.bundle) {
@@ -395,6 +426,65 @@ function App() {
       ]),
     };
   }, [inboxDiscovery, t]);
+
+  function describeRunListStatus(run: RunInboxItem): RunListStatusModel {
+    if (run.reviewPackStatus === "generated") {
+      return {
+        label: t("welcome.recentRuns.status.reviewPackGenerated"),
+        hint: t("welcome.recentRuns.statusHints.reviewPackGenerated"),
+        tone: "success",
+        primaryActionLabel: t("welcome.recentRuns.actions.useRun"),
+        verificationLabel: t("welcome.recentRuns.verification.hasReceipt"),
+        reviewPackLabel: t("welcome.recentRuns.reviewPack.generated"),
+      };
+    }
+
+    if (run.missingRequiredFields.includes("bundle")) {
+      return {
+        label: t("runStatus.missingBundle.label"),
+        hint: t("runStatus.missingBundle.hint"),
+        tone: "warning",
+        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        verificationLabel: run.verificationStatus === "hasReceipt"
+          ? t("welcome.recentRuns.verification.hasReceipt")
+          : t("welcome.recentRuns.verification.missingReceipt"),
+        reviewPackLabel: t("welcome.recentRuns.reviewPack.needsAttention"),
+      };
+    }
+
+    if (run.missingRequiredFields.includes("receipt")) {
+      return {
+        label: t("runStatus.missingReceipt.label"),
+        hint: t("runStatus.missingReceipt.hint"),
+        tone: "warning",
+        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        verificationLabel: t("welcome.recentRuns.verification.missingReceipt"),
+        reviewPackLabel: t("welcome.recentRuns.reviewPack.needsAttention"),
+      };
+    }
+
+    if (run.missingRequiredFields.includes("summary")) {
+      return {
+        label: t("runStatus.missingSummary.label"),
+        hint: t("runStatus.missingSummary.hint"),
+        tone: "warning",
+        primaryActionLabel: t("welcome.recentRuns.actions.fixRun"),
+        verificationLabel: run.verificationStatus === "hasReceipt"
+          ? t("welcome.recentRuns.verification.hasReceipt")
+          : t("welcome.recentRuns.verification.missingReceipt"),
+        reviewPackLabel: t("welcome.recentRuns.reviewPack.needsAttention"),
+      };
+    }
+
+    return {
+      label: t("runStatus.ready.label"),
+      hint: t("welcome.recentRuns.statusHints.ready"),
+      tone: "success",
+      primaryActionLabel: t("welcome.recentRuns.actions.useRun"),
+      verificationLabel: t("welcome.recentRuns.verification.hasReceipt"),
+      reviewPackLabel: t("welcome.recentRuns.reviewPack.ready"),
+    };
+  }
 
   useEffect(() => {
     let active = true;
@@ -610,6 +700,17 @@ function App() {
     activateDetectionResult(latestInboxResult, {
       origin: "inbox",
       detailsVisible: false,
+    });
+    setScreen("inputs");
+  }
+
+  function useInboxRun(
+    run: RunInboxItem,
+    options: { detailsVisible: boolean },
+  ) {
+    activateDetectionResult(run.detection, {
+      origin: "inbox",
+      detailsVisible: options.detailsVisible || run.missingRequiredFields.length > 0,
     });
     setScreen("inputs");
   }
@@ -1004,6 +1105,61 @@ function App() {
                 </button>
               </div>
             </article>
+
+            <section className="recent-runs-section">
+              <div className="section-heading-row">
+                <div>
+                  <h3>{t("welcome.recentRuns.title")}</h3>
+                  <p>{t("welcome.recentRuns.description")}</p>
+                </div>
+                {inboxDiscovery.status === "ready" && recentRuns.length > 0 && (
+                  <span className="status-chip">
+                    {t("welcome.recentRuns.countLabel", [String(recentRuns.length)])}
+                  </span>
+                )}
+              </div>
+
+              {inboxDiscovery.status === "ready" && recentRuns.length > 0 ? (
+                <div className="recent-run-list">
+                  {recentRuns.map((run) => {
+                    const status = describeRunListStatus(run);
+
+                    return (
+                      <RecentRunCard
+                        key={run.runId}
+                        directory={run.runResultDirectory}
+                        directoryLabel={t("welcome.recentRuns.directoryLabel")}
+                        reviewPackLabel={status.reviewPackLabel}
+                        selected={selectedRunDirectory === run.runResultDirectory}
+                        sourceLabel={
+                          run.source === "localRunResult"
+                            ? t("welcome.recentRuns.sourceLocal")
+                            : t("welcome.recentRuns.sourceFallback")
+                        }
+                        statusHint={status.hint}
+                        statusLabel={status.label}
+                        timeLabel={formatRunTimestamp(locale, run.modifiedMs)}
+                        title={run.runId}
+                        tone={status.tone}
+                        verificationLabel={status.verificationLabel}
+                        onSelect={() => useInboxRun(run, { detailsVisible: false })}
+                        onViewDetails={() =>
+                          useInboxRun(run, { detailsVisible: true })
+                        }
+                        selectLabel={status.primaryActionLabel}
+                        viewDetailsLabel={t("welcome.recentRuns.actions.viewDetails")}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <Callout tone="neutral">
+                  {inboxDiscovery.status === "loading"
+                    ? t("welcome.recentRuns.loading")
+                    : t("welcome.recentRuns.empty")}
+                </Callout>
+              )}
+            </section>
 
             {welcomeDetailsVisible && (
               <div className="feature-grid">
@@ -1952,6 +2108,83 @@ function RunStatusCard({
       </div>
 
       <p className="run-status-hint">{statusHint}</p>
+    </article>
+  );
+}
+
+function RecentRunCard({
+  directory,
+  directoryLabel,
+  onSelect,
+  onViewDetails,
+  reviewPackLabel,
+  selectLabel,
+  selected,
+  sourceLabel,
+  statusHint,
+  statusLabel,
+  timeLabel,
+  title,
+  tone,
+  verificationLabel,
+  viewDetailsLabel,
+}: {
+  directory: string;
+  directoryLabel: string;
+  onSelect: () => void;
+  onViewDetails: () => void;
+  reviewPackLabel: string;
+  selectLabel: string;
+  selected: boolean;
+  sourceLabel: string;
+  statusHint: string;
+  statusLabel: string;
+  timeLabel: string;
+  title: string;
+  tone: NoticeTone;
+  verificationLabel: string;
+  viewDetailsLabel: string;
+}) {
+  return (
+    <article className={selected ? "recent-run-card selected" : "recent-run-card"}>
+      <div className="recent-run-card-header">
+        <div>
+          <h4>{title}</h4>
+          <p>{timeLabel}</p>
+        </div>
+        <span
+          className={
+            tone === "success"
+              ? "status-chip status-chip-ready"
+              : "status-chip status-chip-warning"
+          }
+        >
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="recent-run-card-meta">
+        <div className="recent-run-card-meta-item">
+          <strong>{directoryLabel}</strong>
+          <PathDisplay path={directory} />
+        </div>
+        <div className="recent-run-card-chip-row">
+          <span className="status-chip">{sourceLabel}</span>
+          <span className="status-chip">{verificationLabel}</span>
+          <span className="status-chip">{reviewPackLabel}</span>
+        </div>
+      </div>
+
+      <p className="run-status-hint">{statusHint}</p>
+
+      <div className="panel-actions">
+        <button className="secondary-button" type="button" onClick={onSelect}>
+          {selectLabel}
+        </button>
+        <button className="tertiary-button" type="button" onClick={onViewDetails}>
+          {viewDetailsLabel}
+        </button>
+      </div>
     </article>
   );
 }

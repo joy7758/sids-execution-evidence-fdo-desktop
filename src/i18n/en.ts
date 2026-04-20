@@ -2,7 +2,7 @@ const en = {
   shell: {
     badge: "Review Pack Desktop v0.1",
     title: "Review Pack Desktop",
-    subtitle: "No command line. Just turn the current artifact set into one review pack.",
+    subtitle: "A desktop entry point for run results, evidence status, and review delivery.",
     languageLabel: "Language",
     locale: {
       zhCN: "中文",
@@ -12,12 +12,12 @@ const en = {
   },
   steps: {
     welcome: {
-      label: "Welcome",
-      hint: "Start with the one job this customer app should solve.",
+      label: "Monitoring home",
+      hint: "Start by checking whether the latest usable run result was found.",
     },
     inputs: {
-      label: "Inputs",
-      hint: "Choose bundle, receipt, summary, and an output folder.",
+      label: "Import results",
+      hint: "Import one run result directory and detect the core files automatically.",
     },
     build: {
       label: "Build",
@@ -41,32 +41,66 @@ const en = {
     retry: "Retry",
   },
   welcome: {
-    kicker: "Customer desktop path",
-    title: "Turn the current artifact set into one review pack",
+    kicker: "Run inbox",
+    title: "Agent Run Monitoring",
     description:
-      "This desktop shell does one job only: help customers choose an existing bundle, receipt, and summary without touching the command line, then move into a stable Review Pack flow.",
-    primaryAction: "Build Review Pack",
-    secondaryAction: "View result page",
+      "The app first checks the local run inbox and tries to find the latest complete run result. If it finds one, you can move directly into the Review Pack flow. If not, choose a directory or correct files manually.",
+    actions: {
+      useLatest: "Use latest run result",
+      chooseDirectory: "Choose run result directory",
+      advancedManual: "Advanced: choose files manually",
+    },
+    discovery: {
+      statusLoading: "Checking the inbox",
+      statusFound: "Latest run result found",
+      statusEmpty: "No usable run result found",
+      statusMissing: "Run inbox not found yet",
+      statusFailed: "Automatic discovery failed",
+      loadingTitle: "Checking local run results",
+      loadingDescription:
+        "The app is checking the default inbox to see whether a complete recent run result is available.",
+      foundTitle: "Latest run result found",
+      foundDescription:
+        "The app automatically detected a local run result and it is ready for Review Pack generation.",
+      emptyTitle: "No usable run result found",
+      emptyDescription:
+        "Choose a run result directory now, or come back later after a new run result has been recorded.",
+      emptyDescriptionWithCount:
+        "{0} directories were found in the inbox, but none of them are complete yet. Choose a directory now or try again later.",
+      missingTitle: "Run inbox not found yet",
+      missingDescription:
+        "The default inbox is {0}. You can also choose a run result directory directly.",
+      failedTitle: "The inbox could not be checked right now",
+    },
     cards: {
-      input: {
-        title: "Keep input simple",
-        body: "Only bundle, receipt, and summary are primary inputs. Manifest, public key, and runtime events stay optional supporting files.",
+      inbox: {
+        title: "Run result inbox",
+        body: "The default inbox path is `~/AgentEvidence/runs/`. M1 only scans this location and only inspects the first-level child directories.",
       },
-      output: {
-        title: "Keep the output boundary stable",
-        body: "The primary outputs are still bundle, receipt, and summary. Review Pack stays on top of that contract.",
-      },
-      boundary: {
-        title: "Do not turn this into a platform",
-        body: "This version does not run models, manage providers, or add cloud sync. It only shapes the customer-facing desktop shell.",
+      recentRun: {
+        title: "Latest complete run",
+        body: "If a complete run result exists in the inbox, the home page uses it as the default entry instead of asking users to pick files first.",
+        directoryLabel: "Latest run result directory",
+        empty: "No complete run result is available yet.",
       },
     },
   },
   inputs: {
     kicker: "Input setup",
-    title: "Choose the files needed for Review Pack",
+    title: "Import a run result directory before building Review Pack",
     description:
-      "D2 upgrades the Inputs page into a real desktop form: choose files, choose an output folder, and finish validation before continuing.",
+      "The default path is one run result directory with automatic detection. If detection is incomplete, switch to Advanced manual selection and correct the file paths.",
+    modeTitle: "Input mode",
+    modes: {
+      directory: {
+        label: "Import Run Result Directory",
+        hint: "Default path. Import one directory and detect the files automatically.",
+      },
+      manual: {
+        label: "Advanced manual selection",
+        hint: "Use this only when you need to correct detected file paths.",
+      },
+    },
     requiredStatus: "{0}/{1} required files ready",
     optionalStatus: "{0} optional files attached",
     formStatusReady: "Ready for build",
@@ -76,7 +110,64 @@ const en = {
       "These three files define the primary input surface for the customer desktop v0.1.",
     optionalSectionTitle: "Optional supporting files",
     optionalSectionDescription:
-      "Supporting files stay supporting and do not become a new primary output line.",
+      "Supporting files stay supporting and do not become a new primary output line. Only manifest, public key, and runtime events are supported here. Private keys are excluded by default.",
+    manualSectionTitle: "Advanced manual selection",
+    manualSectionDescription:
+      "Use this when automatic detection is incomplete, or when you want to replace a detected file path with a different one.",
+    manualSectionDirectoryNotice:
+      "The current directory-detection result has already been carried into this form. You can correct any missing or incorrect paths here.",
+    latestResult: {
+      title: "Latest run result detected",
+      description:
+        "The app is currently using the latest complete run result discovered automatically. Technical file paths stay collapsed by default and can be opened only when needed.",
+      cardTitle: "Latest run result status",
+      cardSourceInbox: "Source: run result inbox",
+      directoryLabel: "Run result directory",
+      actionLabel: "Next step",
+      nextActionBuild: "Choose an output location and continue to Review Pack",
+      nextActionFix: "Correct the missing items before continuing",
+      showDetails: "View detection details",
+      reselectDirectory: "Choose another directory",
+      advancedManual: "Advanced: choose files manually",
+      detectedLabel: "Latest run result detected",
+    },
+    directoryImport: {
+      title: "Import Run Result Directory",
+      description:
+        "Choose one run result directory and the desktop app will automatically detect the evidence package, verification receipt, summary, and optional supporting files.",
+      label: "Run result directory",
+      hint: "Choose a directory that already contains one exported run result.",
+      placeholder: "No run result directory selected yet",
+      statusIdle: "Waiting for a directory",
+      statusScanning: "Detecting files now",
+      statusReady: "Automatic detection complete",
+      statusIncomplete: "Automatic detection incomplete",
+      statusFailed: "Directory scan failed",
+      directorySelected: "Directory selected",
+      scanningNotice:
+        "The app is scanning the selected directory and detecting the available evidence files.",
+      detectedPrimaryTitle: "Detected core files",
+      detectedPrimaryDescription:
+        "This shows the detected evidence package, verification receipt, and summary.",
+      detectedSupportingTitle: "Detected supporting files",
+      detectedSupportingDescription:
+        "This shows optional supporting files. Only manifest, public key, and runtime events are detected here. Private keys are excluded by default.",
+      notDetected: "This file was not detected yet",
+      optionalNotDetected: "This supporting file was not detected in the selected directory",
+      warningsTitle: "Detection warnings",
+      multipleCandidates: "Multiple {0} candidates were found. The app is currently using {1}.",
+      detectedIncompleteHelp:
+        "Automatic detection is incomplete. Review the missing items, or switch to Advanced manual selection to correct the file paths.",
+      useAdvancedAction: "Switch to Advanced manual selection",
+      scanFailedTitle: "The directory scan did not complete",
+      scanFailed:
+        "The app could not detect a complete result from this directory. Check the directory contents, or switch to Advanced manual selection.",
+      detectedReady: "Detection completed and the app is ready for the build step.",
+      detectedIncomplete:
+        "The app detected some files, but required items are still missing. Correct them before continuing.",
+      fixMissingNotice:
+        "Automatic detection is still incomplete. Correct the missing files, or switch to Advanced manual selection before continuing.",
+    },
     outputSectionTitle: "Output directory",
     outputSectionDescription:
       "Before Review Pack is generated, choose the local folder where it should be written.",
@@ -122,11 +213,29 @@ const en = {
       },
     },
   },
+  runStatus: {
+    ready: {
+      label: "Evidence is complete and Review Pack can be generated",
+      hint: "Bundle, receipt, and summary are present. Choose the output location and continue.",
+    },
+    missingBundle: {
+      label: "Evidence package missing and needs attention",
+      hint: "The evidence package file (bundle) has not been detected yet, so Review Pack cannot continue.",
+    },
+    missingReceipt: {
+      label: "Verification receipt missing and needs attention",
+      hint: "The verification receipt file (receipt) has not been detected yet. Add it before continuing.",
+    },
+    missingSummary: {
+      label: "Summary missing and needs attention",
+      hint: "The summary file (summary) has not been detected yet. Add it before continuing.",
+    },
+  },
   build: {
     kicker: "Preflight review",
     title: "Review the inputs, then send them to the local engine",
     description:
-      "D5 wires this page to the local sidecar. Review the preflight summary, then run the bounded Review Pack build.",
+      "Review the current run source, the output location, and the status summary before generating Review Pack.",
     statusIdle: "Ready to build",
     statusRunning: "Building now",
     statusSuccess: "Build succeeded",
@@ -178,11 +287,32 @@ const en = {
       },
     },
     summary: {
+      runResultDirectorySelected: "Run result directory: imported",
+      manualSource: "Current source: advanced manual selection",
       requiredFiles: "Required files: {0}",
       optionalFiles: "Optional supporting files: {0}",
       outputDirectory: "Output directory: selected",
+      buildAction: "Next step: generate Review Pack",
+      readyAction: "Current state: Review Pack already generated",
     },
+    runCard: {
+      title: "Current run result",
+      directoryLabel: "Run result source",
+      sourceDirectory: "Source: run result directory",
+      sourceManual: "Source: advanced manual selection",
+    },
+    outputCard: {
+      title: "Output location",
+      description:
+        "The generated Review Pack will be written here. The page shows a simple summary first; technical paths stay behind details.",
+    },
+    sourceManualValue: "Advanced manual selection",
+    showDetailsAction: "View details",
+    hideDetailsAction: "Hide details",
     preflight: {
+      sourceDirectoryTitle: "Run result directory",
+      sourceDirectoryDescription:
+        "This shows the directory imported for automatic evidence-file detection.",
       requiredTitle: "Required inputs",
       requiredDescription:
         "These are the three primary files that will be handed to the local engine.",

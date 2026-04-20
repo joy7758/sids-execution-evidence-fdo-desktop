@@ -1,8 +1,17 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import "./App.css";
+import {
+  discoverRunInbox,
+  type RunInboxDiscoveryResult,
+} from "./lib/runInbox";
+import {
+  detectRunResultDirectory,
+  type DetectionWarningKind,
+  type RunResultDetectionResult,
+} from "./lib/runResultDetection";
 import {
   runReviewPackBuild,
   type ReviewPackEngineInput,
@@ -11,6 +20,7 @@ import {
 import { useI18n } from "./i18n";
 
 type Screen = "welcome" | "inputs" | "build" | "result";
+type InputMode = "directory" | "manual";
 type RequiredFieldKey = "bundle" | "receipt" | "summary";
 type OptionalFieldKey = "manifest" | "publicKey" | "runtimeEvents";
 type FieldKey = RequiredFieldKey | OptionalFieldKey;
@@ -32,6 +42,19 @@ type NoticeState = {
   text: string;
 } | null;
 
+type DirectoryOrigin = "inbox" | "manual" | null;
+
+type DetectionState =
+  | { status: "idle" }
+  | { status: "scanning"; directory: string }
+  | { status: "ready"; result: RunResultDetectionResult }
+  | { status: "failure"; directory: string; message: string };
+
+type InboxDiscoveryState =
+  | { status: "loading" }
+  | { status: "ready"; discovery: RunInboxDiscoveryResult }
+  | { status: "failure"; message: string };
+
 type BuildRunState =
   | { status: "idle" }
   | {
@@ -47,6 +70,12 @@ type BuildRunState =
       run: Extract<ReviewPackEngineInvocation, { status: "failure" }>;
     };
 
+type RunStatusKey =
+  | "ready"
+  | "missingBundle"
+  | "missingReceipt"
+  | "missingSummary";
+
 const requiredFieldKeys: RequiredFieldKey[] = ["bundle", "receipt", "summary"];
 const optionalFieldKeys: OptionalFieldKey[] = [
   "manifest",
@@ -54,6 +83,14 @@ const optionalFieldKeys: OptionalFieldKey[] = [
   "runtimeEvents",
 ];
 const screenOrder: Screen[] = ["welcome", "inputs", "build", "result"];
+const detectionWarningFieldMap: Record<DetectionWarningKind, FieldKey> = {
+  bundle: "bundle",
+  receipt: "receipt",
+  summary: "summary",
+  manifest: "manifest",
+  publicKey: "publicKey",
+  runtimeEvents: "runtimeEvents",
+};
 
 const emptyRequiredFieldState: RequiredFieldState = {
   bundle: "",
@@ -107,9 +144,30 @@ function formatDebugDetails(value: unknown) {
   }
 }
 
+function normalizeDetectionError(error: unknown) {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
 function App() {
   const { locale, setLocale, t } = useI18n();
   const [screen, setScreen] = useState<Screen>("welcome");
+  const [inputMode, setInputMode] = useState<InputMode>("directory");
+  const [directoryOrigin, setDirectoryOrigin] = useState<DirectoryOrigin>(null);
+  const [runResultDirectory, setRunResultDirectory] = useState("");
+  const [detectionState, setDetectionState] = useState<DetectionState>({
+    status: "idle",
+  });
+  const [inboxDiscovery, setInboxDiscovery] = useState<InboxDiscoveryState>({
+    status: "loading",
+  });
   const [requiredPaths, setRequiredPaths] = useState<RequiredFieldState>(
     emptyRequiredFieldState,
   );
@@ -119,6 +177,8 @@ function App() {
   const [outputDir, setOutputDir] = useState("");
   const [notice, setNotice] = useState<NoticeState>(null);
   const [buildRun, setBuildRun] = useState<BuildRunState>({ status: "idle" });
+  const [directoryDetailsVisible, setDirectoryDetailsVisible] = useState(false);
+  const [buildDetailsVisible, setBuildDetailsVisible] = useState(false);
 
   const validationErrors = useMemo<ValidationErrors>(
     () => ({
@@ -142,8 +202,43 @@ function App() {
     (key) => Boolean(optionalPaths[key]),
   ).length;
 
+  const directoryWarnings = useMemo(() => {
+    if (detectionState.status !== "ready") {
+      return [];
+    }
+
+    return detectionState.result.warnings.map((warning) => {
+      const fieldKey = detectionWarningFieldMap[warning.kind];
+      return {
+        summary: t("inputs.directoryImport.multipleCandidates", [
+          t(`inputs.fields.${fieldKey}.label`),
+          basenameFromPath(warning.selectedPath),
+        ]),
+        candidatePaths: warning.candidatePaths,
+      };
+    });
+  }, [detectionState, t]);
+  const usingRunResultDirectory = Boolean(runResultDirectory.trim());
+
+  const detectedDirectoryStatusLabel = useMemo(() => {
+    switch (detectionState.status) {
+      case "scanning":
+        return t("inputs.directoryImport.statusScanning");
+      case "ready":
+        return detectionState.result.missingRequiredFields.length === 0
+          ? t("inputs.directoryImport.statusReady")
+          : t("inputs.directoryImport.statusIncomplete");
+      case "failure":
+        return t("inputs.directoryImport.statusFailed");
+      default:
+        return t("inputs.directoryImport.statusIdle");
+    }
+  }, [detectionState, t]);
+
   const preflightState = useMemo(
     () => ({
+      inputMode,
+      runResultDirectory: runResultDirectory.trim(),
       requiredFiles: requiredFieldKeys.map<PreflightItem>((key) => ({
         key,
         label: t(`inputs.fields.${key}.label`),
@@ -158,7 +253,7 @@ function App() {
       })),
       outputDir: outputDir.trim(),
     }),
-    [optionalPaths, outputDir, requiredPaths, t],
+    [inputMode, optionalPaths, outputDir, requiredPaths, runResultDirectory, t],
   );
 
   const emptyResultPaths = useMemo(() => {
@@ -195,6 +290,113 @@ function App() {
     }
   }, [buildRun.status, t]);
 
+  const latestInboxResult =
+    inboxDiscovery.status === "ready"
+      ? inboxDiscovery.discovery.latestCompleteResult
+      : null;
+  const inboxPath =
+    inboxDiscovery.status === "ready" ? inboxDiscovery.discovery.inboxPath : "";
+
+  const currentRunStatusKey = useMemo<RunStatusKey>(() => {
+    if (!requiredPaths.bundle) {
+      return "missingBundle";
+    }
+
+    if (!requiredPaths.receipt) {
+      return "missingReceipt";
+    }
+
+    if (!requiredPaths.summary) {
+      return "missingSummary";
+    }
+
+    return "ready";
+  }, [requiredPaths]);
+
+  const currentRunStatusTone: NoticeTone =
+    currentRunStatusKey === "ready" ? "success" : "warning";
+
+  const welcomeState = useMemo(() => {
+    if (inboxDiscovery.status === "loading") {
+      return {
+        mode: "loading" as const,
+        title: t("welcome.discovery.loadingTitle"),
+        description: t("welcome.discovery.loadingDescription"),
+      };
+    }
+
+    if (inboxDiscovery.status === "failure") {
+      return {
+        mode: "failure" as const,
+        title: t("welcome.discovery.failedTitle"),
+        description: inboxDiscovery.message,
+      };
+    }
+
+    if (inboxDiscovery.discovery.latestCompleteResult) {
+      return {
+        mode: "found" as const,
+        title: t("welcome.discovery.foundTitle"),
+        description: t("welcome.discovery.foundDescription"),
+      };
+    }
+
+    if (inboxDiscovery.discovery.inboxExists) {
+      return {
+        mode: "empty" as const,
+        title: t("welcome.discovery.emptyTitle"),
+        description:
+          inboxDiscovery.discovery.incompleteDirectoryCount > 0
+            ? t("welcome.discovery.emptyDescriptionWithCount", [
+                String(inboxDiscovery.discovery.incompleteDirectoryCount),
+              ])
+            : t("welcome.discovery.emptyDescription"),
+      };
+    }
+
+    return {
+      mode: "missing" as const,
+      title: t("welcome.discovery.missingTitle"),
+      description: t("welcome.discovery.missingDescription", [
+        inboxDiscovery.discovery.inboxPath,
+      ]),
+    };
+  }, [inboxDiscovery, t]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshRunInbox() {
+      setInboxDiscovery({ status: "loading" });
+
+      try {
+        const discovery = await discoverRunInbox();
+        if (!active) {
+          return;
+        }
+
+        setInboxDiscovery({ status: "ready", discovery });
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setInboxDiscovery({
+          status: "failure",
+          message: normalizeDetectionError(error),
+        });
+      }
+    }
+
+    if (screen === "welcome") {
+      void refreshRunInbox();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [screen]);
+
   const failureDebugDetails = useMemo(() => {
     if (buildRun.status !== "failure") {
       return "";
@@ -224,11 +426,38 @@ function App() {
 
   function resetBuildFlow() {
     setBuildRun({ status: "idle" });
+    setBuildDetailsVisible(false);
     setNotice(null);
   }
 
   function setPanelNotice(tone: NoticeTone, text: string) {
     setNotice({ tone, text });
+  }
+
+  function applyDetectionResult(result: RunResultDetectionResult) {
+    setRequiredPaths({
+      bundle: result.bundlePath,
+      receipt: result.receiptPath,
+      summary: result.summaryPath,
+    });
+    setOptionalPaths({
+      manifest: result.manifestPath,
+      publicKey: result.publicKeyPath,
+      runtimeEvents: result.runtimeEventsPath,
+    });
+  }
+
+  function activateDetectionResult(
+    result: RunResultDetectionResult,
+    options: { origin: DirectoryOrigin; detailsVisible: boolean },
+  ) {
+    resetBuildFlow();
+    setInputMode("directory");
+    setDirectoryOrigin(options.origin);
+    setRunResultDirectory(result.runResultDirectory);
+    setDetectionState({ status: "ready", result });
+    setDirectoryDetailsVisible(options.detailsVisible);
+    applyDetectionResult(result);
   }
 
   async function pickPath(options: {
@@ -242,6 +471,88 @@ function App() {
     });
 
     return typeof selected === "string" ? selected : null;
+  }
+
+  function switchInputMode(nextMode: InputMode) {
+    if (nextMode === "directory" && detectionState.status === "ready") {
+      applyDetectionResult(detectionState.result);
+    }
+
+    setNotice(null);
+    setInputMode(nextMode);
+  }
+
+  async function chooseRunResultDirectory() {
+    const selected = await pickPath({
+      directory: true,
+      title: t("inputs.directoryImport.label"),
+    });
+
+    if (!selected) {
+      return false;
+    }
+
+    resetBuildFlow();
+    setInputMode("directory");
+    setDirectoryOrigin("manual");
+    setDirectoryDetailsVisible(true);
+    setRunResultDirectory(selected);
+    setDetectionState({ status: "scanning", directory: selected });
+    setRequiredPaths({ ...emptyRequiredFieldState });
+    setOptionalPaths({ ...emptyOptionalFieldState });
+
+    try {
+      const result = await detectRunResultDirectory(selected);
+      setDetectionState({ status: "ready", result });
+      applyDetectionResult(result);
+
+      if (result.missingRequiredFields.length === 0) {
+        setPanelNotice("success", t("inputs.directoryImport.detectedReady"));
+      } else {
+        setPanelNotice("warning", t("inputs.directoryImport.detectedIncomplete"));
+      }
+    } catch (error) {
+      setDetectionState({
+        status: "failure",
+        directory: selected,
+        message: normalizeDetectionError(error),
+      });
+      setPanelNotice("warning", t("inputs.directoryImport.scanFailed"));
+    }
+
+    return true;
+  }
+
+  function useLatestRunResult() {
+    if (!latestInboxResult) {
+      return;
+    }
+
+    activateDetectionResult(latestInboxResult, {
+      origin: "inbox",
+      detailsVisible: false,
+    });
+    setScreen("inputs");
+  }
+
+  async function handleWelcomeChooseDirectory() {
+    const selected = await chooseRunResultDirectory();
+    if (selected) {
+      setScreen("inputs");
+    }
+  }
+
+  function handleWelcomeManualMode() {
+    if (latestInboxResult) {
+      activateDetectionResult(latestInboxResult, {
+        origin: "inbox",
+        detailsVisible: false,
+      });
+    }
+
+    setNotice(null);
+    setInputMode("manual");
+    setScreen("inputs");
   }
 
   async function chooseRequiredFile(key: RequiredFieldKey) {
@@ -301,14 +612,32 @@ function App() {
     setOutputDir("");
   }
 
+  function clearRunResultDirectory() {
+    resetBuildFlow();
+    setDirectoryOrigin(null);
+    setRunResultDirectory("");
+    setDirectoryDetailsVisible(false);
+    setDetectionState({ status: "idle" });
+    setRequiredPaths({ ...emptyRequiredFieldState });
+    setOptionalPaths({ ...emptyOptionalFieldState });
+  }
+
   function goToScreen(target: Screen) {
     if (target === "build" && !formValid) {
       setScreen("inputs");
-      setPanelNotice("warning", t("inputs.buildBlockedNotice"));
+      setPanelNotice(
+        "warning",
+        inputMode === "directory"
+          ? t("inputs.directoryImport.fixMissingNotice")
+          : t("inputs.buildBlockedNotice"),
+      );
       return;
     }
 
     setNotice(null);
+    if (target === "build") {
+      setBuildDetailsVisible(false);
+    }
     setScreen(target);
   }
 
@@ -382,6 +711,12 @@ function App() {
     }
   }
 
+  const showInboxCompactCard =
+    inputMode === "directory" &&
+    directoryOrigin === "inbox" &&
+    detectionState.status === "ready" &&
+    !directoryDetailsVisible;
+
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
@@ -450,34 +785,93 @@ function App() {
 
             <div className="feature-grid">
               <article className="feature-card">
-                <h3>{t("welcome.cards.input.title")}</h3>
-                <p>{t("welcome.cards.input.body")}</p>
+                <h3>{welcomeState.title}</h3>
+                <p>{welcomeState.description}</p>
+                <div className="status-chip-group">
+                  <span
+                    className={
+                      welcomeState.mode === "found"
+                        ? "status-chip status-chip-ready"
+                        : welcomeState.mode === "loading"
+                          ? "status-chip status-chip-running"
+                          : "status-chip"
+                    }
+                  >
+                    {welcomeState.mode === "found"
+                      ? t("welcome.discovery.statusFound")
+                      : welcomeState.mode === "empty"
+                        ? t("welcome.discovery.statusEmpty")
+                        : welcomeState.mode === "missing"
+                          ? t("welcome.discovery.statusMissing")
+                          : welcomeState.mode === "failure"
+                            ? t("welcome.discovery.statusFailed")
+                            : t("welcome.discovery.statusLoading")}
+                  </span>
+                </div>
               </article>
               <article className="feature-card">
-                <h3>{t("welcome.cards.output.title")}</h3>
-                <p>{t("welcome.cards.output.body")}</p>
+                <h3>{t("welcome.cards.inbox.title")}</h3>
+                <p>{t("welcome.cards.inbox.body")}</p>
+                {inboxPath && <PathDisplay path={inboxPath} />}
               </article>
               <article className="feature-card">
-                <h3>{t("welcome.cards.boundary.title")}</h3>
-                <p>{t("welcome.cards.boundary.body")}</p>
+                <h3>{t("welcome.cards.recentRun.title")}</h3>
+                <p>{t("welcome.cards.recentRun.body")}</p>
+                {latestInboxResult ? (
+                  <PathGroup
+                    label={t("welcome.cards.recentRun.directoryLabel")}
+                    path={latestInboxResult.runResultDirectory}
+                  />
+                ) : (
+                  <span>{t("welcome.cards.recentRun.empty")}</span>
+                )}
               </article>
             </div>
 
             <div className="panel-actions">
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => goToScreen("inputs")}
-              >
-                {t("welcome.primaryAction")}
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => goToScreen("result")}
-              >
-                {t("welcome.secondaryAction")}
-              </button>
+              {welcomeState.mode === "found" ? (
+                <>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={useLatestRunResult}
+                  >
+                    {t("welcome.actions.useLatest")}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={handleWelcomeChooseDirectory}
+                  >
+                    {t("welcome.actions.chooseDirectory")}
+                  </button>
+                  <button
+                    className="tertiary-button"
+                    type="button"
+                    onClick={handleWelcomeManualMode}
+                  >
+                    {t("welcome.actions.advancedManual")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={handleWelcomeChooseDirectory}
+                    disabled={welcomeState.mode === "loading"}
+                  >
+                    {t("welcome.actions.chooseDirectory")}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={handleWelcomeManualMode}
+                  >
+                    {t("welcome.actions.advancedManual")}
+                  </button>
+                </>
+              )}
             </div>
           </section>
         )}
@@ -514,46 +908,260 @@ function App() {
               </div>
             </header>
 
-            <div className="input-sections">
-              <section className="input-section">
-                <h3>{t("inputs.requiredSectionTitle")}</h3>
-                <p>{t("inputs.requiredSectionDescription")}</p>
-                <div className="field-list">
-                  {requiredFieldKeys.map((key) => (
-                    <PathField
-                      key={key}
-                      fieldKey={key}
-                      selectedPath={requiredPaths[key]}
-                      required
-                      error={validationErrors[key]}
-                      onPick={() => chooseRequiredFile(key)}
-                      onClear={() => clearRequiredFile(key)}
-                    />
-                  ))}
-                </div>
-              </section>
+            <div className="mode-switch" role="tablist" aria-label={t("inputs.modeTitle")}>
+              <button
+                type="button"
+                className={
+                  inputMode === "directory" ? "mode-button active" : "mode-button"
+                }
+                onClick={() => switchInputMode("directory")}
+              >
+                <span>{t("inputs.modes.directory.label")}</span>
+                <small>{t("inputs.modes.directory.hint")}</small>
+              </button>
+              <button
+                type="button"
+                className={
+                  inputMode === "manual" ? "mode-button active" : "mode-button"
+                }
+                onClick={() => switchInputMode("manual")}
+              >
+                <span>{t("inputs.modes.manual.label")}</span>
+                <small>{t("inputs.modes.manual.hint")}</small>
+              </button>
+            </div>
 
-              <section className="input-section">
-                <h3>{t("inputs.optionalSectionTitle")}</h3>
-                <p>{t("inputs.optionalSectionDescription")}</p>
-                <div className="field-list">
-                  {optionalFieldKeys.map((key) => (
-                    <PathField
-                      key={key}
-                      fieldKey={key}
-                      selectedPath={optionalPaths[key]}
-                      required={false}
-                      onPick={() => chooseOptionalFile(key)}
-                      onClear={() => clearOptionalFile(key)}
-                    />
-                  ))}
-                </div>
-              </section>
+            <div className="input-sections">
+              {inputMode === "directory" ? (
+                <>
+                  {showInboxCompactCard && detectionState.status === "ready" ? (
+                    <section className="input-section">
+                      <h3>{t("inputs.latestResult.title")}</h3>
+                      <p>{t("inputs.latestResult.description")}</p>
+                      <RunStatusCard
+                        directory={runResultDirectory}
+                        statusLabel={t(`runStatus.${currentRunStatusKey}.label`)}
+                        statusHint={t(`runStatus.${currentRunStatusKey}.hint`)}
+                        tone={currentRunStatusTone}
+                        actionLabel={
+                          currentRunStatusKey === "ready"
+                            ? t("inputs.latestResult.nextActionBuild")
+                            : t("inputs.latestResult.nextActionFix")
+                        }
+                      />
+                      <div className="panel-actions">
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() => setDirectoryDetailsVisible(true)}
+                        >
+                          {t("inputs.latestResult.showDetails")}
+                        </button>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={handleWelcomeChooseDirectory}
+                        >
+                          {t("inputs.latestResult.reselectDirectory")}
+                        </button>
+                        <button
+                          className="tertiary-button"
+                          type="button"
+                          onClick={() => switchInputMode("manual")}
+                        >
+                          {t("inputs.latestResult.advancedManual")}
+                        </button>
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="input-section">
+                      <h3>{t("inputs.directoryImport.title")}</h3>
+                      <p>{t("inputs.directoryImport.description")}</p>
+
+                      <DirectoryField
+                        label={t("inputs.directoryImport.label")}
+                        hint={t("inputs.directoryImport.hint")}
+                        placeholder={t("inputs.directoryImport.placeholder")}
+                        path={runResultDirectory}
+                        onPick={chooseRunResultDirectory}
+                        onClear={clearRunResultDirectory}
+                      />
+
+                      <div className="status-chip-group">
+                        <span
+                          className={
+                            detectionState.status === "ready" &&
+                            requiredReadyCount === requiredFieldKeys.length
+                              ? "status-chip status-chip-ready"
+                              : detectionState.status === "failure"
+                                ? "status-chip status-chip-warning"
+                                : "status-chip"
+                          }
+                        >
+                          {detectedDirectoryStatusLabel}
+                        </span>
+                        {usingRunResultDirectory && (
+                          <span className="status-chip">
+                            {directoryOrigin === "inbox"
+                              ? t("inputs.latestResult.detectedLabel")
+                              : t("inputs.directoryImport.directorySelected")}
+                          </span>
+                        )}
+                      </div>
+
+                      {detectionState.status === "scanning" && (
+                        <Callout tone="neutral">
+                          {t("inputs.directoryImport.scanningNotice")}
+                        </Callout>
+                      )}
+
+                      {usingRunResultDirectory && detectionState.status !== "failure" && (
+                        <div className="inventory-grid">
+                          <div className="inventory-panel">
+                            <h3>{t("inputs.directoryImport.detectedPrimaryTitle")}</h3>
+                            <p>{t("inputs.directoryImport.detectedPrimaryDescription")}</p>
+                            <ul className="path-list">
+                              {requiredFieldKeys.map((key) => (
+                                <li key={key}>
+                                  <PathGroup
+                                    label={t(`inputs.fields.${key}.label`)}
+                                    path={requiredPaths[key]}
+                                    emptyText={t("inputs.directoryImport.notDetected")}
+                                    error={
+                                      !requiredPaths[key] ? validationErrors[key] : undefined
+                                    }
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="inventory-panel">
+                            <h3>{t("inputs.directoryImport.detectedSupportingTitle")}</h3>
+                            <p>{t("inputs.directoryImport.detectedSupportingDescription")}</p>
+                            <ul className="path-list">
+                              {optionalFieldKeys.map((key) => (
+                                <li key={key}>
+                                  <PathGroup
+                                    label={t(`inputs.fields.${key}.label`)}
+                                    path={optionalPaths[key]}
+                                    emptyText={t("inputs.directoryImport.optionalNotDetected")}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                      {detectionState.status === "ready" &&
+                        detectionState.result.warnings.length > 0 && (
+                          <div className="inventory-panel">
+                            <h3>{t("inputs.directoryImport.warningsTitle")}</h3>
+                            <ul className="warning-list">
+                              {directoryWarnings.map((warning) => (
+                                <li key={warning.summary} className="warning-item">
+                                  <strong>{warning.summary}</strong>
+                                  <div className="warning-path-list">
+                                    {warning.candidatePaths.map((candidatePath) => (
+                                      <PathDisplay
+                                        key={candidatePath}
+                                        path={candidatePath}
+                                      />
+                                    ))}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                      {detectionState.status === "ready" &&
+                        detectionState.result.missingRequiredFields.length > 0 && (
+                          <div className="directory-followup">
+                            <Callout tone="warning">
+                              {t("inputs.directoryImport.detectedIncompleteHelp")}
+                            </Callout>
+                            <button
+                              className="secondary-button"
+                              type="button"
+                              onClick={() => switchInputMode("manual")}
+                            >
+                              {t("inputs.directoryImport.useAdvancedAction")}
+                            </button>
+                          </div>
+                        )}
+
+                      {detectionState.status === "failure" && (
+                        <div className="directory-followup">
+                          <Callout tone="warning">
+                            <strong>{t("inputs.directoryImport.scanFailedTitle")}</strong>
+                            <span>{t("inputs.directoryImport.scanFailed")}</span>
+                            <small>{detectionState.message}</small>
+                          </Callout>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => switchInputMode("manual")}
+                          >
+                            {t("inputs.directoryImport.useAdvancedAction")}
+                          </button>
+                        </div>
+                      )}
+                    </section>
+                  )}
+                </>
+              ) : (
+                <>
+                  <section className="input-section">
+                    <h3>{t("inputs.manualSectionTitle")}</h3>
+                    <p>{t("inputs.manualSectionDescription")}</p>
+                    {usingRunResultDirectory && (
+                      <Callout tone="neutral">
+                        {t("inputs.manualSectionDirectoryNotice")}
+                      </Callout>
+                    )}
+                    <div className="field-list">
+                      {requiredFieldKeys.map((key) => (
+                        <PathField
+                          key={key}
+                          fieldKey={key}
+                          selectedPath={requiredPaths[key]}
+                          required
+                          error={validationErrors[key]}
+                          onPick={() => chooseRequiredFile(key)}
+                          onClear={() => clearRequiredFile(key)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="input-section">
+                    <h3>{t("inputs.optionalSectionTitle")}</h3>
+                    <p>{t("inputs.optionalSectionDescription")}</p>
+                    <div className="field-list">
+                      {optionalFieldKeys.map((key) => (
+                        <PathField
+                          key={key}
+                          fieldKey={key}
+                          selectedPath={optionalPaths[key]}
+                          required={false}
+                          onPick={() => chooseOptionalFile(key)}
+                          onClear={() => clearOptionalFile(key)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
 
               <section className="input-section">
                 <h3>{t("inputs.outputSectionTitle")}</h3>
                 <p>{t("inputs.outputSectionDescription")}</p>
                 <DirectoryField
+                  label={t("inputs.outputLabel")}
+                  hint={t("inputs.outputHint")}
+                  placeholder={t("inputs.outputPlaceholder")}
                   path={outputDir}
                   error={validationErrors.outputDir}
                   onPick={chooseOutputDirectory}
@@ -581,8 +1189,17 @@ function App() {
               >
                 {t("inputs.primaryAction")}
               </button>
+              {inputMode === "directory" && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => switchInputMode("manual")}
+                >
+                  {t("inputs.directoryImport.useAdvancedAction")}
+                </button>
+              )}
               <button
-                className="secondary-button"
+                className="tertiary-button"
                 type="button"
                 onClick={() => goToScreen("welcome")}
               >
@@ -683,6 +1300,11 @@ function App() {
 
             <div className="summary-strip">
               <span>
+                {preflightState.runResultDirectory
+                  ? t("build.summary.runResultDirectorySelected")
+                  : t("build.summary.manualSource")}
+              </span>
+              <span>
                 {t("build.summary.requiredFiles", [String(requiredReadyCount)])}
               </span>
               <span>
@@ -691,25 +1313,76 @@ function App() {
               <span>{t("build.summary.outputDirectory")}</span>
             </div>
 
-            <div className="preflight-grid">
-              <section className="preflight-card">
-                <h3>{t("build.preflight.requiredTitle")}</h3>
-                <p>{t("build.preflight.requiredDescription")}</p>
-                <ReadonlyList items={preflightState.requiredFiles} />
-              </section>
+            <div className="build-summary-grid">
+              <RunStatusCard
+                directory={
+                  preflightState.runResultDirectory || t("build.sourceManualValue")
+                }
+                statusLabel={t(`runStatus.${currentRunStatusKey}.label`)}
+                statusHint={t(`runStatus.${currentRunStatusKey}.hint`)}
+                tone={currentRunStatusTone}
+                actionLabel={
+                  buildRun.status === "success"
+                    ? t("build.summary.readyAction")
+                    : t("build.summary.buildAction")
+                }
+                title={t("build.runCard.title")}
+                directoryLabel={t("build.runCard.directoryLabel")}
+                sourceLabel={
+                  preflightState.runResultDirectory
+                    ? t("build.runCard.sourceDirectory")
+                    : t("build.runCard.sourceManual")
+                }
+              />
 
-              <section className="preflight-card">
-                <h3>{t("build.preflight.optionalTitle")}</h3>
-                <p>{t("build.preflight.optionalDescription")}</p>
-                <ReadonlyList items={preflightState.optionalFiles} />
-              </section>
-
-              <section className="preflight-card">
-                <h3>{t("build.preflight.outputTitle")}</h3>
-                <p>{t("build.preflight.outputDescription")}</p>
+              <section className="preflight-card compact-summary-card">
+                <h3>{t("build.outputCard.title")}</h3>
+                <p>{t("build.outputCard.description")}</p>
                 <PathDisplay path={preflightState.outputDir} />
               </section>
             </div>
+
+            <div className="panel-actions">
+              <button
+                className="tertiary-button"
+                type="button"
+                onClick={() => setBuildDetailsVisible((current) => !current)}
+              >
+                {buildDetailsVisible
+                  ? t("build.hideDetailsAction")
+                  : t("build.showDetailsAction")}
+              </button>
+            </div>
+
+            {buildDetailsVisible && (
+              <div className="preflight-grid">
+                {preflightState.runResultDirectory && (
+                  <section className="preflight-card">
+                    <h3>{t("build.preflight.sourceDirectoryTitle")}</h3>
+                    <p>{t("build.preflight.sourceDirectoryDescription")}</p>
+                    <PathDisplay path={preflightState.runResultDirectory} />
+                  </section>
+                )}
+
+                <section className="preflight-card">
+                  <h3>{t("build.preflight.requiredTitle")}</h3>
+                  <p>{t("build.preflight.requiredDescription")}</p>
+                  <ReadonlyList items={preflightState.requiredFiles} />
+                </section>
+
+                <section className="preflight-card">
+                  <h3>{t("build.preflight.optionalTitle")}</h3>
+                  <p>{t("build.preflight.optionalDescription")}</p>
+                  <ReadonlyList items={preflightState.optionalFiles} />
+                </section>
+
+                <section className="preflight-card">
+                  <h3>{t("build.preflight.outputTitle")}</h3>
+                  <p>{t("build.preflight.outputDescription")}</p>
+                  <PathDisplay path={preflightState.outputDir} />
+                </section>
+              </div>
+            )}
 
             {buildRun.status === "running" && (
               <Callout tone="neutral">{t("build.runningCallout")}</Callout>
@@ -1035,12 +1708,73 @@ function PathField({
   );
 }
 
+function RunStatusCard({
+  actionLabel,
+  directory,
+  directoryLabel,
+  sourceLabel,
+  statusHint,
+  statusLabel,
+  title,
+  tone,
+}: {
+  actionLabel: string;
+  directory: string;
+  directoryLabel?: string;
+  sourceLabel?: string;
+  statusHint: string;
+  statusLabel: string;
+  title?: string;
+  tone: NoticeTone;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <article className="run-status-card">
+      <div className="run-status-card-header">
+        <div>
+          <h3>{title ?? t("inputs.latestResult.cardTitle")}</h3>
+          <p>{sourceLabel ?? t("inputs.latestResult.cardSourceInbox")}</p>
+        </div>
+        <span
+          className={
+            tone === "success"
+              ? "status-chip status-chip-ready"
+              : "status-chip status-chip-warning"
+          }
+        >
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="run-status-metadata">
+        <div className="run-status-metadata-item">
+          <strong>{directoryLabel ?? t("inputs.latestResult.directoryLabel")}</strong>
+          <PathDisplay path={directory} />
+        </div>
+        <div className="run-status-metadata-item">
+          <strong>{t("inputs.latestResult.actionLabel")}</strong>
+          <span>{actionLabel}</span>
+        </div>
+      </div>
+
+      <p className="run-status-hint">{statusHint}</p>
+    </article>
+  );
+}
+
 function DirectoryField({
+  label,
+  hint,
+  placeholder,
   path,
   error,
   onPick,
   onClear,
 }: {
+  label: string;
+  hint: string;
+  placeholder: string;
   path: string;
   error?: string;
   onPick: () => void;
@@ -1052,15 +1786,15 @@ function DirectoryField({
   return (
     <div className={error ? "output-card field-card-error" : "output-card"}>
       <div className="field-copy">
-        <strong>{t("inputs.outputLabel")}</strong>
-        <small>{t("inputs.outputHint")}</small>
+        <strong>{label}</strong>
+        <small>{hint}</small>
         {error && <div className="field-error">{error}</div>}
       </div>
 
       {hasValue ? (
         <PathDisplay path={path} />
       ) : (
-        <div className="path-placeholder">{t("inputs.outputPlaceholder")}</div>
+        <div className="path-placeholder">{placeholder}</div>
       )}
 
       <div className="field-actions">
@@ -1117,15 +1851,23 @@ function PathGroup({
   label,
   path,
   emptyText,
+  error,
 }: {
   label: string;
   path: string;
   emptyText?: string;
+  error?: string;
 }) {
   return (
     <div className="path-group">
       <strong>{label}</strong>
-      {path ? <PathDisplay path={path} /> : <span>{emptyText}</span>}
+      {path ? (
+        <PathDisplay path={path} />
+      ) : (
+        <span className={error ? "path-empty-error" : undefined}>
+          {error ?? emptyText}
+        </span>
+      )}
     </div>
   );
 }

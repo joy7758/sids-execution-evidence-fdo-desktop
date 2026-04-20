@@ -2,7 +2,7 @@ const zhCN = {
   shell: {
     badge: "Review Pack Desktop v0.1",
     title: "Review Pack Desktop",
-    subtitle: "不用命令行，直接把三件套整理成审阅包。",
+    subtitle: "围绕运行结果、证据状态和审阅交付的桌面入口。",
     languageLabel: "语言",
     locale: {
       zhCN: "中文",
@@ -12,12 +12,12 @@ const zhCN = {
   },
   steps: {
     welcome: {
-      label: "欢迎",
-      hint: "先看这版正式客户软件要解决什么问题。",
+      label: "监测首页",
+      hint: "先看系统是否已经发现最近一次可用运行结果。",
     },
     inputs: {
-      label: "输入文件",
-      hint: "选择 bundle、receipt、summary 和输出目录。",
+      label: "导入结果",
+      hint: "导入运行结果目录，自动识别三件套和附属文件。",
     },
     build: {
       label: "生成审阅包",
@@ -41,32 +41,63 @@ const zhCN = {
     retry: "重试",
   },
   welcome: {
-    kicker: "正式客户版路径",
-    title: "先把现有三件套整理成一个审阅包",
+    kicker: "运行结果收件箱",
+    title: "智能体运行监测",
     description:
-      "这版桌面壳只做一件事：帮助客户在不敲命令行的前提下，选择证据包文件、校验结果文件和摘要文件，进入稳定的 Review Pack 流程。",
-    primaryAction: "开始生成审阅包",
-    secondaryAction: "查看结果页",
+      "软件会先检查本地运行结果收件箱，尝试自动发现最近一次完整运行结果。找到后，你可以直接进入审阅包流程；找不到时，再手动选择目录或文件。",
+    actions: {
+      useLatest: "使用最近运行结果",
+      chooseDirectory: "选择运行结果目录",
+      advancedManual: "高级：手动选择文件",
+    },
+    discovery: {
+      statusLoading: "正在检查收件箱",
+      statusFound: "已找到最近一次运行结果",
+      statusEmpty: "未找到可用运行结果",
+      statusMissing: "尚未发现运行结果收件箱",
+      statusFailed: "自动发现失败",
+      loadingTitle: "正在检查本地运行结果",
+      loadingDescription: "系统正在检查默认收件箱，确认是否存在最近一次完整运行结果。",
+      foundTitle: "已找到最近一次运行结果",
+      foundDescription: "系统已自动识别本地运行结果，可直接生成审阅包。",
+      emptyTitle: "未找到可用运行结果",
+      emptyDescription:
+        "你可以选择一个运行结果目录，或稍后从自动记录入口生成新的运行结果。",
+      emptyDescriptionWithCount:
+        "收件箱里已有 {0} 个目录，但暂时没有完整结果。你可以选择一个目录，或稍后再试。",
+      missingTitle: "尚未发现运行结果收件箱",
+      missingDescription: "默认收件箱为 {0}，你也可以直接选择一个运行结果目录。",
+      failedTitle: "暂时无法自动检查收件箱",
+    },
     cards: {
-      input: {
-        title: "输入保持简单",
-        body: "只接 bundle、receipt、summary。manifest、公钥和 runtime events 仍然只是可选辅助文件。",
+      inbox: {
+        title: "运行结果收件箱",
+        body: "默认收件箱路径固定为 `~/AgentEvidence/runs/`。M1 只扫描这一处，并且只看一级子目录。",
       },
-      output: {
-        title: "输出边界不变",
-        body: "主输出仍然是 bundle、receipt、summary。Review Pack 只是建立在三件套之上的桌面层。",
-      },
-      boundary: {
-        title: "先不做大平台",
-        body: "这版不做跑模型、不做 provider 管理、不做云同步，只把正式客户版的桌面壳立起来。",
+      recentRun: {
+        title: "最近一次完整运行",
+        body: "如果收件箱里存在完整运行结果，首页会优先把它作为默认入口，而不是先让用户选文件。",
+        directoryLabel: "最近运行结果目录",
+        empty: "当前还没有可直接使用的完整运行结果。",
       },
     },
   },
   inputs: {
     kicker: "输入准备",
-    title: "选择生成审阅包需要的文件",
+    title: "先导入运行结果目录，再生成审阅包",
     description:
-      "D2 把输入页升级为真实桌面表单：可直接选择文件和输出目录，并在继续前完成必填校验。",
+      "默认路径是导入一个运行结果目录并自动识别三件套；如果识别不完整，再切换到高级手动选择修正。",
+    modeTitle: "输入方式",
+    modes: {
+      directory: {
+        label: "导入运行结果目录",
+        hint: "默认入口。导入一个目录并自动识别。",
+      },
+      manual: {
+        label: "高级手动选择",
+        hint: "识别不完整时，再手动修正文件路径。",
+      },
+    },
     requiredStatus: "已准备 {0}/{1} 个必填文件",
     optionalStatus: "已附加 {0} 个可选文件",
     formStatusReady: "可以进入生成页",
@@ -74,7 +105,63 @@ const zhCN = {
     requiredSectionTitle: "必填文件",
     requiredSectionDescription: "这三个文件构成当前正式客户版 v0.1 的主输入面。",
     optionalSectionTitle: "可选辅助文件",
-    optionalSectionDescription: "辅助文件保留为 supporting，不会被提升成新的主输出。",
+    optionalSectionDescription:
+      "辅助文件仍然只是 supporting。当前只支持 manifest、公钥和 runtime events；私钥默认不会导入。",
+    manualSectionTitle: "高级手动选择",
+    manualSectionDescription:
+      "当自动识别未完成，或你想替换识别结果时，可以在这里手动选择证据包文件、校验回执文件和摘要文件。",
+    manualSectionDirectoryNotice:
+      "当前目录识别结果已经带入这里。你可以直接修改不正确或缺失的文件路径。",
+    latestResult: {
+      title: "最近运行结果已识别",
+      description: "当前默认使用系统自动发现的最近一次完整运行结果。技术文件路径默认折叠，需要时再展开查看。",
+      cardTitle: "最近运行结果状态",
+      cardSourceInbox: "来源：运行结果收件箱",
+      directoryLabel: "运行结果目录",
+      actionLabel: "下一步",
+      nextActionBuild: "继续配置输出位置并生成审阅包",
+      nextActionFix: "先修正缺失项，再进入生成页",
+      showDetails: "查看识别详情",
+      reselectDirectory: "重新选择目录",
+      advancedManual: "高级：手动选择文件",
+      detectedLabel: "最近运行结果已识别",
+    },
+    directoryImport: {
+      title: "导入运行结果目录",
+      description:
+        "选择一个运行结果目录后，桌面壳会自动识别证据包文件、校验回执文件、摘要文件，以及可选的附属文件。",
+      label: "运行结果目录",
+      hint: "选择一个已经导出完成的运行结果目录。",
+      placeholder: "尚未选择运行结果目录",
+      statusIdle: "等待导入目录",
+      statusScanning: "正在自动识别",
+      statusReady: "自动识别完成",
+      statusIncomplete: "自动识别未完成",
+      statusFailed: "目录识别失败",
+      directorySelected: "目录已选择",
+      scanningNotice: "正在扫描所选目录，并自动识别可用的证据文件。",
+      detectedPrimaryTitle: "已识别的主文件",
+      detectedPrimaryDescription:
+        "这里展示自动识别出的证据包文件、校验回执文件和摘要文件。",
+      detectedSupportingTitle: "已识别的附属文件",
+      detectedSupportingDescription:
+        "这里展示可选附属文件。当前只识别 manifest、公钥和 runtime events；私钥默认不会导入。",
+      notDetected: "尚未识别到该文件",
+      optionalNotDetected: "当前目录中未识别到该附属文件",
+      warningsTitle: "识别提醒",
+      multipleCandidates: "发现多个 {0} 候选文件，当前使用 {1}。",
+      detectedIncompleteHelp:
+        "自动识别未完成。请检查缺失项，或切换到高级手动选择进行修正。",
+      useAdvancedAction: "切换到高级手动选择进行修正",
+      scanFailedTitle: "目录识别没有完成",
+      scanFailed:
+        "当前无法从这个目录中识别出完整结果。请检查目录内容，或切换到高级手动选择。",
+      detectedReady: "目录识别完成，可以继续到生成页。",
+      detectedIncomplete:
+        "目录识别到了部分文件，但仍缺少必填项。请先修正后再继续。",
+      fixMissingNotice:
+        "当前目录识别未完成，请先补齐缺少的文件，或切换到高级手动选择进行修正。",
+    },
     outputSectionTitle: "输出目录",
     outputSectionDescription: "生成审阅包之前，先明确要写入的目标目录。",
     outputLabel: "审阅包输出目录",
@@ -117,11 +204,29 @@ const zhCN = {
       },
     },
   },
+  runStatus: {
+    ready: {
+      label: "证据完整，可生成审阅包",
+      hint: "bundle、receipt 和 summary 已齐全。确认输出位置后即可继续。",
+    },
+    missingBundle: {
+      label: "缺少证据包，需处理",
+      hint: "当前还没有识别到证据包文件（bundle），不能继续生成审阅包。",
+    },
+    missingReceipt: {
+      label: "缺少校验回执，需处理",
+      hint: "当前还没有识别到校验回执文件（receipt），请先补齐后再继续。",
+    },
+    missingSummary: {
+      label: "缺少摘要，需处理",
+      hint: "当前还没有识别到摘要文件（summary），请先补齐后再继续。",
+    },
+  },
   build: {
     kicker: "生成前预检",
     title: "核对输入，然后交给本地引擎生成审阅包",
     description:
-      "D5 已把生成页接到本地 sidecar：先看预检摘要，再点击主按钮生成 Review Pack。",
+      "先确认当前运行结果来源、输出位置和状态摘要，再点击主按钮生成审阅包。",
     statusIdle: "准备生成",
     statusRunning: "正在生成",
     statusSuccess: "生成成功",
@@ -173,11 +278,30 @@ const zhCN = {
       },
     },
     summary: {
+      runResultDirectorySelected: "运行结果目录：已导入",
+      manualSource: "当前来源：高级手动选择",
       requiredFiles: "必填文件：{0} 个",
       optionalFiles: "可选辅助文件：{0} 个",
       outputDirectory: "输出目录：已选择",
+      buildAction: "下一步：生成审阅包",
+      readyAction: "当前状态：审阅包已生成",
     },
+    runCard: {
+      title: "当前运行结果",
+      directoryLabel: "运行结果来源",
+      sourceDirectory: "来源：运行结果目录",
+      sourceManual: "来源：高级手动选择",
+    },
+    outputCard: {
+      title: "输出位置",
+      description: "生成后的审阅包会写入这里。默认先展示结果摘要，技术路径需要时再展开查看。",
+    },
+    sourceManualValue: "高级手动选择",
+    showDetailsAction: "查看详情",
+    hideDetailsAction: "收起详情",
     preflight: {
+      sourceDirectoryTitle: "运行结果目录",
+      sourceDirectoryDescription: "这里展示本次导入并用于自动识别的运行结果目录。",
       requiredTitle: "必填输入",
       requiredDescription: "这里展示会送入本地引擎的三个主输入文件。",
       optionalTitle: "可选辅助文件",

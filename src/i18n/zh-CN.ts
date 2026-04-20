@@ -197,6 +197,50 @@ const zhCN = {
       needsAttention: "需处理",
       needsManualReview: "需人工复核",
     },
+    policy: {
+      title: "政策检查项",
+      description:
+        "这里展示平台当前会检查的最小检查项，帮助你理解这次运行已经具备哪些条件、还缺哪些条件。它只做产品内可见性，不代表法律结论。",
+      items: {
+        runTrace: "运行留痕",
+        verificationReceipt: "校验回执",
+        reviewDelivery: "审阅交付",
+        pdfReport: "PDF 报告",
+        manualReview: "人工复核",
+      },
+      states: {
+        available: "已具备",
+        missing: "缺失",
+        needsAction: "需处理",
+        manualReview: "需人工复核",
+        notNeeded: "暂不需要",
+      },
+      hints: {
+        runTrace: {
+          available: "已找到运行结果，并识别出证据包文件。",
+          partial: "已找到运行结果目录，但还没有识别出证据包文件。",
+          missing: "当前还没有可用的运行结果目录。",
+        },
+        verificationReceipt: {
+          available: "已识别校验回执文件，可作为基础校验依据。",
+          missing: "当前未识别校验回执文件。",
+        },
+        reviewDelivery: {
+          available: "当前运行已具备生成审阅包的条件。",
+          generated: "当前运行已经生成过审阅包，可继续查看交付结果。",
+          needsAction: "当前缺少主文件，暂时不能进入审阅交付。",
+        },
+        pdfReport: {
+          available: "当前运行目录下已经存在 PDF 报告。",
+          missing: "当前还没有可见的 PDF 报告。",
+        },
+        manualReview: {
+          manualReview: "检测结果存在警告或候选冲突，建议人工复核。",
+          needsAction: "当前运行还缺主文件，应先补齐并修正。",
+          notNeeded: "当前没有发现需要额外人工复核的信号。",
+        },
+      },
+    },
     issues: {
       title: "需处理的问题",
     },

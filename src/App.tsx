@@ -93,6 +93,14 @@ type RunListStatusModel = {
   reviewPackLabel: string;
 };
 
+type PolicyCheckItemModel = {
+  key: string;
+  label: string;
+  value: string;
+  hint: string;
+  tone: NoticeTone;
+};
+
 const requiredFieldKeys: RequiredFieldKey[] = ["bundle", "receipt", "summary"];
 const optionalFieldKeys: OptionalFieldKey[] = [
   "manifest",
@@ -411,6 +419,7 @@ function App() {
     currentRunItem?.reviewPackStatus === "generated"
       ? t("detail.judgment.generatedHint")
       : t(`runStatus.${currentRunStatusKey}.hint`);
+  const runHasGeneratedReviewPack = currentRunItem?.reviewPackStatus === "generated";
   const currentRunNextActionLabel =
     currentRunStatusKey === "ready"
       ? t("flowActions.generateReviewPack")
@@ -432,6 +441,96 @@ function App() {
 
     return items;
   }, [currentRunItem, currentRunStatusKey, detectionState, t]);
+  const detailPolicyChecks = useMemo<PolicyCheckItemModel[]>(() => {
+    const hasRunDirectory = Boolean(selectedRunDirectory);
+    const hasBundle = Boolean(requiredPaths.bundle);
+    const hasReceipt = Boolean(requiredPaths.receipt);
+    const needsManualReview =
+      detectionState.status === "ready" && detectionState.result.warnings.length > 0;
+    const needsProcessing =
+      currentRunStatusKey !== "ready" ||
+      Boolean(currentRunItem?.needsAttention) ||
+      detectionIssues.length > 0;
+
+    return [
+      {
+        key: "runTrace",
+        label: t("detail.policy.items.runTrace"),
+        value:
+          hasRunDirectory && hasBundle
+            ? t("detail.policy.states.available")
+            : t("detail.policy.states.missing"),
+        hint: hasRunDirectory && hasBundle
+          ? t("detail.policy.hints.runTrace.available")
+          : hasRunDirectory
+            ? t("detail.policy.hints.runTrace.partial")
+            : t("detail.policy.hints.runTrace.missing"),
+        tone: hasRunDirectory && hasBundle ? "success" : "warning",
+      },
+      {
+        key: "verificationReceipt",
+        label: t("detail.policy.items.verificationReceipt"),
+        value: hasReceipt
+          ? t("detail.policy.states.available")
+          : t("detail.policy.states.missing"),
+        hint: hasReceipt
+          ? t("detail.policy.hints.verificationReceipt.available")
+          : t("detail.policy.hints.verificationReceipt.missing"),
+        tone: hasReceipt ? "success" : "warning",
+      },
+      {
+        key: "reviewDelivery",
+        label: t("detail.policy.items.reviewDelivery"),
+        value: runHasGeneratedReviewPack || currentRunStatusKey === "ready"
+          ? t("detail.policy.states.available")
+          : t("detail.policy.states.needsAction"),
+        hint: runHasGeneratedReviewPack
+          ? t("detail.policy.hints.reviewDelivery.generated")
+          : currentRunStatusKey === "ready"
+            ? t("detail.policy.hints.reviewDelivery.available")
+            : t("detail.policy.hints.reviewDelivery.needsAction"),
+        tone: runHasGeneratedReviewPack || currentRunStatusKey === "ready"
+          ? "success"
+          : "warning",
+      },
+      {
+        key: "pdfReport",
+        label: t("detail.policy.items.pdfReport"),
+        value: runHasGeneratedReviewPack
+          ? t("detail.policy.states.available")
+          : t("detail.policy.states.missing"),
+        hint: runHasGeneratedReviewPack
+          ? t("detail.policy.hints.pdfReport.available")
+          : t("detail.policy.hints.pdfReport.missing"),
+        tone: runHasGeneratedReviewPack ? "success" : "neutral",
+      },
+      {
+        key: "manualReview",
+        label: t("detail.policy.items.manualReview"),
+        value: needsManualReview
+          ? t("detail.policy.states.manualReview")
+          : needsProcessing
+            ? t("detail.policy.states.needsAction")
+            : t("detail.policy.states.notNeeded"),
+        hint: needsManualReview
+          ? t("detail.policy.hints.manualReview.manualReview")
+          : needsProcessing
+            ? t("detail.policy.hints.manualReview.needsAction")
+            : t("detail.policy.hints.manualReview.notNeeded"),
+        tone: needsManualReview || needsProcessing ? "warning" : "success",
+      },
+    ];
+  }, [
+    currentRunItem,
+    currentRunStatusKey,
+    detectionIssues.length,
+    detectionState,
+    requiredPaths.bundle,
+    requiredPaths.receipt,
+    selectedRunDirectory,
+    t,
+    runHasGeneratedReviewPack,
+  ]);
 
   function routeReadyRunSelection() {
     setNotice(null);
@@ -1466,6 +1565,22 @@ function App() {
                   </ul>
                 </Callout>
               )}
+            </section>
+
+            <section className="inventory-panel detail-section-panel">
+              <h3>{t("detail.policy.title")}</h3>
+              <p>{t("detail.policy.description")}</p>
+              <div className="detail-status-grid">
+                {detailPolicyChecks.map((item) => (
+                  <DetailStatusCard
+                    key={item.key}
+                    label={item.label}
+                    value={item.value}
+                    hint={item.hint}
+                    tone={item.tone}
+                  />
+                ))}
+              </div>
             </section>
 
             <div className="panel-actions">

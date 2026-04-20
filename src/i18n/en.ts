@@ -209,6 +209,52 @@ const en = {
       needsAttention: "Needs attention",
       needsManualReview: "Needs manual review",
     },
+    policy: {
+      title: "Policy checks",
+      description:
+        "This section shows the minimum checks the product currently exposes, so users can see what this run already has, what is still missing, and what still needs attention. It is visibility inside the product, not a legal conclusion.",
+      items: {
+        runTrace: "Run trace",
+        verificationReceipt: "Verification receipt",
+        reviewDelivery: "Review delivery",
+        pdfReport: "PDF report",
+        manualReview: "Manual review",
+      },
+      states: {
+        available: "Available",
+        missing: "Missing",
+        needsAction: "Needs action",
+        manualReview: "Needs manual review",
+        notNeeded: "Not needed yet",
+      },
+      hints: {
+        runTrace: {
+          available: "The run result was found and the evidence package file was detected.",
+          partial:
+            "The run result directory was found, but the evidence package file is still missing.",
+          missing: "There is no usable run result directory yet.",
+        },
+        verificationReceipt: {
+          available: "The verification receipt file is present and can support the basic verification view.",
+          missing: "The verification receipt file has not been detected yet.",
+        },
+        reviewDelivery: {
+          available: "This run already meets the minimum conditions for Review Pack generation.",
+          generated: "This run already produced a Review Pack and can move directly into delivery.",
+          needsAction: "Core files are still missing, so review delivery cannot continue yet.",
+        },
+        pdfReport: {
+          available: "A PDF report already exists under the current run directory.",
+          missing: "No visible PDF report is available yet.",
+        },
+        manualReview: {
+          manualReview:
+            "Detection warnings or competing candidates were found, so a manual review is recommended.",
+          needsAction: "Core files are still missing, so this run should be corrected first.",
+          notNeeded: "No extra manual review signal is currently visible.",
+        },
+      },
+    },
     issues: {
       title: "Items that need attention",
     },

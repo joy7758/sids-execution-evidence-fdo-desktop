@@ -282,6 +282,12 @@ button {
   grid-template-columns: 1fr;
 }
 
+.delivery-focus-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .build-card {
   display: grid;
   gap: 10px;
@@ -398,6 +404,10 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.delivery-action-row {
+  align-items: center;
 }
 
 .status-chip {
@@ -772,6 +782,7 @@ button {
   .feature-grid,
   .build-grid,
   .build-summary-grid,
+  .delivery-focus-grid,
   .result-grid,
   .preflight-grid,
   .inventory-grid {

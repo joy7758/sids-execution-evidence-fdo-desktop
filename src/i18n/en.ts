@@ -396,20 +396,44 @@ const en = {
     },
     optionalNotIncluded: "Not attached this time",
     placeholderOutputDirectory: "~/Documents/review-pack-output",
+    openPdfAction: "Open PDF report",
+    copyPdfPathAction: "Copy PDF path",
+    openMarkdownAction: "Open Markdown report",
+    copyMarkdownPathAction: "Copy Markdown path",
     openFolderAction: "Open Folder",
-    copyPathAction: "Copy Path",
+    copySaveLocationAction: "Copy save location",
+    openPdfSuccess: "Tried to open the PDF report.",
+    openPdfFailed:
+      "The PDF report could not be opened right now. Make sure the file still exists.",
+    copyPdfPathSuccess: "Copied the PDF report path.",
+    copyPdfPathFailed: "The PDF report path could not be copied. Try again.",
+    openMarkdownFallbackSuccess:
+      "PDF was not found, so the app tried to open the Markdown report instead.",
+    openMarkdownFallbackFailed:
+      "PDF was not found and the Markdown report could not be opened either.",
+    copyMarkdownFallbackSuccess:
+      "PDF was not found, so the Markdown report path was copied instead.",
+    copyMarkdownFallbackFailed:
+      "PDF was not found and the Markdown report path could not be copied.",
     openFolderSuccess: "Tried to open the review-pack folder.",
     openFolderFailed:
       "The review-pack folder could not be opened right now. Make sure the local output still exists.",
-    copyPathSuccess: "Copied the review-pack folder path.",
-    copyPathFailed: "The path could not be copied. Try again.",
+    copySaveLocationSuccess: "Copied the review-pack save location.",
+    copySaveLocationFailed: "The save location could not be copied. Try again.",
+    pdfFallbackTitle: "PDF report not found",
+    pdfFallbackBody:
+      "The build result is still available. You can open the Markdown report as a technical format instead.",
     showDetailsAction: "View output details",
     hideDetailsAction: "Hide output details",
     goToBuildAction: "Back to build",
     deliveryCard: {
       title: "Delivery result",
-      body: "Start from the saved location of this Review Pack. Technical and intermediate files can stay behind the details toggle.",
+      body: "Start from the formal deliverable: the PDF report and its saved location. Technical and intermediate files stay behind the details toggle.",
       status: "Ready to deliver",
+      pdfLabel: "PDF report",
+      pdfChecking: "Checking whether the PDF report exists",
+      pdfMissing: "PDF report was not found",
+      pdfFallback: "Markdown report is still available as a technical format",
       directoryLabel: "Saved location",
     },
     cards: {
@@ -417,13 +441,18 @@ const en = {
         title: "Review pack directory",
         body: "This shows the stable pack directory returned by the current build.",
       },
+      pdf: {
+        title: "PDF report",
+        body: "This shows the formal PDF-delivery path.",
+        empty: "No PDF report was detected",
+      },
       index: {
         title: "Index file (index.json)",
         body: "This shows the pack-index path. It remains a pack index, not a new primary artifact.",
       },
       report: {
-        title: "Review report (report.md)",
-        body: "This shows the review-report path. Taxonomy and explanation still belong to the renderer layer only.",
+        title: "Markdown report (technical format)",
+        body: "This shows the Markdown intermediate report path for technical review and debugging.",
       },
     },
   },

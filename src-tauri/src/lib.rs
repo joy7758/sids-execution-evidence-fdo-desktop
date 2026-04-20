@@ -380,6 +380,11 @@ fn discover_run_inbox() -> Result<RunInboxDiscovery, String> {
     })
 }
 
+#[tauri::command]
+fn path_exists(path: String) -> bool {
+    PathBuf::from(path).exists()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -389,7 +394,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             detect_run_result_directory,
-            discover_run_inbox
+            discover_run_inbox,
+            path_exists
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,5 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -41,6 +42,12 @@ type NoticeState = {
   tone: NoticeTone;
   text: string;
 } | null;
+
+type DeliveryAssetState =
+  | { status: "idle"; pdfPath: string }
+  | { status: "checking"; pdfPath: string }
+  | { status: "available"; pdfPath: string }
+  | { status: "missing"; pdfPath: string };
 
 type DirectoryOrigin = "inbox" | "manual" | null;
 
@@ -156,6 +163,19 @@ function normalizeDetectionError(error: unknown) {
   return String(error);
 }
 
+function inferPdfPath(params: { packDir: string; reportPath: string }) {
+  const normalizedReportPath = params.reportPath.replace(/\\/g, "/");
+  if (normalizedReportPath.endsWith("/review/report.md")) {
+    return normalizedReportPath.replace(/report\.md$/, "report.pdf");
+  }
+
+  if (normalizedReportPath.endsWith(".md")) {
+    return normalizedReportPath.replace(/\.md$/, ".pdf");
+  }
+
+  return `${params.packDir.replace(/\\/g, "/")}/review/report.pdf`;
+}
+
 function App() {
   const { locale, setLocale, t } = useI18n();
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -181,6 +201,10 @@ function App() {
   const [directoryDetailsVisible, setDirectoryDetailsVisible] = useState(false);
   const [buildDetailsVisible, setBuildDetailsVisible] = useState(false);
   const [resultDetailsVisible, setResultDetailsVisible] = useState(false);
+  const [deliveryAssetState, setDeliveryAssetState] = useState<DeliveryAssetState>({
+    status: "idle",
+    pdfPath: "",
+  });
 
   const validationErrors = useMemo<ValidationErrors>(
     () => ({
@@ -432,6 +456,51 @@ function App() {
           supportingFiles: buildRun.run.result.supporting_files,
         }
       : null;
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshDeliveryAsset() {
+      if (!resultData) {
+        setDeliveryAssetState({ status: "idle", pdfPath: "" });
+        return;
+      }
+
+      const pdfPath = inferPdfPath({
+        packDir: resultData.packDir,
+        reportPath: resultData.reportPath,
+      });
+
+      setDeliveryAssetState({ status: "checking", pdfPath });
+
+      try {
+        const exists = await invoke<boolean>("path_exists", { path: pdfPath });
+        if (!active) {
+          return;
+        }
+
+        setDeliveryAssetState({
+          status: exists ? "available" : "missing",
+          pdfPath,
+        });
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setDeliveryAssetState({ status: "missing", pdfPath });
+      }
+    }
+
+    void refreshDeliveryAsset();
+
+    return () => {
+      active = false;
+    };
+  }, [resultData]);
+
+  const deliveryPdfAvailable = deliveryAssetState.status === "available";
+  const deliveryPdfPath = deliveryAssetState.pdfPath;
 
   function resetBuildFlow() {
     setBuildRun({ status: "idle" });
@@ -708,16 +777,66 @@ function App() {
     }
   }
 
-  async function handleCopyPath() {
+  async function handleCopySaveLocation() {
     if (!resultData) {
       return;
     }
 
     try {
       await writeText(resultData.packDir);
-      setPanelNotice("success", t("result.copyPathSuccess"));
+      setPanelNotice("success", t("result.copySaveLocationSuccess"));
     } catch {
-      setPanelNotice("warning", t("result.copyPathFailed"));
+      setPanelNotice("warning", t("result.copySaveLocationFailed"));
+    }
+  }
+
+  async function handleOpenPdfReport() {
+    if (!resultData) {
+      return;
+    }
+
+    const targetPath = deliveryPdfAvailable ? deliveryPdfPath : resultData.reportPath;
+
+    try {
+      await openPath(targetPath);
+      setPanelNotice(
+        "success",
+        deliveryPdfAvailable
+          ? t("result.openPdfSuccess")
+          : t("result.openMarkdownFallbackSuccess"),
+      );
+    } catch {
+      setPanelNotice(
+        "warning",
+        deliveryPdfAvailable
+          ? t("result.openPdfFailed")
+          : t("result.openMarkdownFallbackFailed"),
+      );
+    }
+  }
+
+  async function handleCopyPdfPath() {
+    if (!resultData) {
+      return;
+    }
+
+    const targetPath = deliveryPdfAvailable ? deliveryPdfPath : resultData.reportPath;
+
+    try {
+      await writeText(targetPath);
+      setPanelNotice(
+        "success",
+        deliveryPdfAvailable
+          ? t("result.copyPdfPathSuccess")
+          : t("result.copyMarkdownFallbackSuccess"),
+      );
+    } catch {
+      setPanelNotice(
+        "warning",
+        deliveryPdfAvailable
+          ? t("result.copyPdfPathFailed")
+          : t("result.copyMarkdownFallbackFailed"),
+      );
     }
   }
 
@@ -1451,13 +1570,55 @@ function App() {
                   {t("result.deliveryCard.status")}
                 </span>
               </div>
-              <PathGroup
-                label={t("result.deliveryCard.directoryLabel")}
-                path={resultData.packDir}
-              />
-              <div className="panel-actions">
+              <div className="delivery-focus-grid">
+                <PathGroup
+                  label={t("result.deliveryCard.pdfLabel")}
+                  path={deliveryPdfAvailable ? deliveryPdfPath : ""}
+                  emptyText={
+                    deliveryAssetState.status === "checking"
+                      ? t("result.deliveryCard.pdfChecking")
+                      : t("result.deliveryCard.pdfMissing")
+                  }
+                  error={
+                    deliveryAssetState.status === "missing"
+                      ? t("result.deliveryCard.pdfFallback")
+                      : undefined
+                  }
+                />
+                <PathGroup
+                  label={t("result.deliveryCard.directoryLabel")}
+                  path={resultData.packDir}
+                />
+              </div>
+
+              {deliveryAssetState.status === "missing" && (
+                <Callout tone="warning">
+                  <strong>{t("result.pdfFallbackTitle")}</strong>
+                  <span>{t("result.pdfFallbackBody")}</span>
+                </Callout>
+              )}
+
+              <div className="panel-actions delivery-action-row">
                 <button
                   className="primary-button"
+                  type="button"
+                  onClick={handleOpenPdfReport}
+                >
+                  {deliveryPdfAvailable
+                    ? t("result.openPdfAction")
+                    : t("result.openMarkdownAction")}
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleCopyPdfPath}
+                >
+                  {deliveryPdfAvailable
+                    ? t("result.copyPdfPathAction")
+                    : t("result.copyMarkdownPathAction")}
+                </button>
+                <button
+                  className="secondary-button"
                   type="button"
                   onClick={handleOpenFolder}
                 >
@@ -1466,9 +1627,9 @@ function App() {
                 <button
                   className="secondary-button"
                   type="button"
-                  onClick={handleCopyPath}
+                  onClick={handleCopySaveLocation}
                 >
-                  {t("result.copyPathAction")}
+                  {t("result.copySaveLocationAction")}
                 </button>
                 <button
                   className="tertiary-button"
@@ -1493,6 +1654,11 @@ function App() {
                     <PathGroup
                       label={t("result.cards.packDir.title")}
                       path={resultData.packDir}
+                    />
+                    <PathGroup
+                      label={t("result.cards.pdf.title")}
+                      path={deliveryPdfAvailable ? deliveryPdfPath : ""}
+                      emptyText={t("result.cards.pdf.empty")}
                     />
                     <PathGroup
                       label={t("result.cards.index.title")}
@@ -1892,7 +2058,7 @@ function PathGroup({
         <PathDisplay path={path} />
       ) : (
         <span className={error ? "path-empty-error" : undefined}>
-          {error ?? emptyText}
+          {error || emptyText || ""}
         </span>
       )}
     </div>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960">
+  <defs>
+    <style>
+      text { font-family: "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #17231d; }
+      .bg { fill: #f5f1e8; }
+      .sidebar { fill: #203d30; }
+      .panel { fill: #fffaf0; stroke: #e5decf; stroke-width: 1.2; }
+      .card { fill: #fffdf7; stroke: #ddd5c6; stroke-width: 1.2; }
+      .soft { fill: #f1efe7; }
+      .primary { fill: #0f6b43; }
+      .secondary { fill: #eee8dc; }
+      .ok { fill: #dceee4; stroke: #bed8c9; }
+      .title { font-size: 36px; font-weight: 800; }
+      .h2 { font-size: 22px; font-weight: 700; }
+      .h3 { font-size: 18px; font-weight: 700; }
+      .body { font-size: 16px; fill: #58655d; }
+      .small { font-size: 13px; fill: #6f7a73; }
+      .button { font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .buttonDark { font-size: 16px; font-weight: 700; fill: #213028; }
+      .tag { font-size: 14px; fill: #236046; }
+    </style>
+  </defs>
+  <rect class="bg" width="1440" height="960"/>
+  <rect class="sidebar" x="48" y="48" width="280" height="864" rx="28"/>
+  <text x="88" y="104" font-size="14" font-weight="800" fill="#bde2c8">REVIEW PACK DESKTOP V0.1</text>
+  <text x="88" y="158" font-size="36" font-weight="800" fill="#ffffff">Review Pack</text>
+  <text x="88" y="202" font-size="36" font-weight="800" fill="#ffffff">Desktop</text>
+  <rect x="82" y="708" width="210" height="90" rx="18" fill="#3b5949" stroke="#6f8a7a"/>
+  <circle cx="118" cy="753" r="21" fill="#597363"/>
+  <text x="112" y="760" font-size="18" fill="#fff">4</text>
+  <text x="154" y="742" font-size="16" font-weight="800" fill="#fff">结果</text>
+  <text x="154" y="768" font-size="14" fill="#dbe5dd">查看 PDF 报告、保存</text>
+  <text x="154" y="790" font-size="14" fill="#dbe5dd">位置和交付动作。</text>
+
+  <rect class="panel" x="360" y="48" width="1032" height="864" rx="30"/>
+  <text x="408" y="104" font-size="14" font-weight="800" fill="#8fcba7">生成结果</text>
+  <text class="title" x="408" y="160">审阅包已生成</text>
+  <text class="body" x="408" y="202">第一屏只展示最重要的交付结果：PDF 报告和保存位置。</text>
+  <rect class="ok" x="1160" y="132" width="126" height="42" rx="21"/>
+  <text class="tag" x="1196" y="159">可交付</text>
+
+  <rect class="card" x="408" y="276" width="936" height="332" rx="24"/>
+  <text class="h2" x="448" y="332">正式交付结果</text>
+  <text class="body" x="448" y="366">PDF 报告是本次正式交付物。Markdown 和索引文件放到输出详情里。</text>
+  <text class="h3" x="448" y="430">PDF 报告</text>
+  <rect class="soft" x="448" y="456" width="390" height="100" rx="16"/>
+  <text class="h3" x="476" y="494">report.pdf</text>
+  <text class="small" x="476" y="526">.../review-packs/review/report.pdf</text>
+  <text class="h3" x="884" y="430">保存位置</text>
+  <rect class="soft" x="884" y="456" width="390" height="100" rx="16"/>
+  <text class="h3" x="912" y="494">review-packs</text>
+  <text class="small" x="912" y="526">.../Application Support/.../review-packs</text>
+  <rect class="primary" x="448" y="582" width="160" height="56" rx="28"/>
+  <text class="button" x="480" y="617">打开 PDF 报告</text>
+  <rect class="secondary" x="628" y="582" width="146" height="56" rx="28"/>
+  <text class="buttonDark" x="656" y="617">复制 PDF 路径</text>
+  <rect class="secondary" x="794" y="582" width="126" height="56" rx="28"/>
+  <text class="buttonDark" x="826" y="617">打开文件夹</text>
+  <rect class="secondary" x="940" y="582" width="156" height="56" rx="28"/>
+  <text class="buttonDark" x="970" y="617">复制保存位置</text>
+
+  <rect class="card" x="408" y="656" width="936" height="88" rx="22"/>
+  <text class="h2" x="448" y="710">查看输出详情</text>
+  <text class="body" x="448" y="738">Markdown 报告、index.json、主文件和附属文件默认折叠。</text>
+  <rect class="secondary" x="1148" y="674" width="138" height="52" rx="26"/>
+  <text class="buttonDark" x="1178" y="707">展开详情</text>
+
+  <rect class="secondary" x="408" y="790" width="150" height="56" rx="28"/>
+  <text class="buttonDark" x="438" y="825">返回最近运行</text>
+  <rect class="secondary" x="578" y="790" width="108" height="56" rx="28"/>
+  <text class="buttonDark" x="610" y="825">帮助</text>
+</svg>
+

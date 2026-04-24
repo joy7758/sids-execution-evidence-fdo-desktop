@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960">
+  <defs>
+    <style>
+      text { font-family: "PingFang SC", "Noto Sans CJK SC", sans-serif; fill: #17231d; }
+      .bg { fill: #f5f1e8; }
+      .sidebar { fill: #203d30; }
+      .panel { fill: #fffaf0; stroke: #e5decf; stroke-width: 1.2; }
+      .card { fill: #fffdf7; stroke: #ddd5c6; stroke-width: 1.2; }
+      .soft { fill: #f1efe7; }
+      .primary { fill: #0f6b43; }
+      .secondary { fill: #eee8dc; }
+      .ok { fill: #dceee4; stroke: #bed8c9; }
+      .warn { fill: #fff0c9; stroke: #efd487; }
+      .title { font-size: 36px; font-weight: 800; }
+      .h2 { font-size: 22px; font-weight: 700; }
+      .h3 { font-size: 18px; font-weight: 700; }
+      .body { font-size: 16px; fill: #58655d; }
+      .small { font-size: 13px; fill: #6f7a73; }
+      .button { font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .buttonDark { font-size: 16px; font-weight: 700; fill: #213028; }
+      .tag { font-size: 14px; fill: #236046; }
+    </style>
+  </defs>
+  <rect class="bg" width="1440" height="960"/>
+  <rect class="sidebar" x="48" y="48" width="280" height="864" rx="28"/>
+  <text x="88" y="104" font-size="14" font-weight="800" fill="#bde2c8">REVIEW PACK DESKTOP V0.1</text>
+  <text x="88" y="158" font-size="36" font-weight="800" fill="#ffffff">Review Pack</text>
+  <text x="88" y="202" font-size="36" font-weight="800" fill="#ffffff">Desktop</text>
+  <text x="88" y="248" font-size="17" fill="#d7e0d8">围绕运行结果、证据状态和审阅</text>
+  <text x="88" y="276" font-size="17" fill="#d7e0d8">交付的桌面入口。</text>
+  <rect x="88" y="342" width="158" height="52" rx="26" fill="#e9efe6"/>
+  <text x="124" y="375" font-size="18" font-weight="800">中文</text>
+  <text x="202" y="375" font-size="18" fill="#506358">EN</text>
+  <rect x="82" y="442" width="210" height="90" rx="18" fill="#3b5949" stroke="#6f8a7a"/>
+  <circle cx="118" cy="487" r="21" fill="#597363"/>
+  <text x="112" y="494" font-size="18" fill="#fff">1</text>
+  <text x="154" y="476" font-size="16" font-weight="800" fill="#fff">监测首页</text>
+  <text x="154" y="502" font-size="14" fill="#dbe5dd">先看系统是否已经发现</text>
+  <text x="154" y="524" font-size="14" fill="#dbe5dd">最近一次可用运行。</text>
+  <text x="154" y="612" font-size="16" font-weight="800" fill="#dbe5dd">导入结果</text>
+  <text x="154" y="732" font-size="16" font-weight="800" fill="#dbe5dd">生成审阅包</text>
+  <text x="154" y="852" font-size="16" font-weight="800" fill="#dbe5dd">结果</text>
+
+  <rect class="panel" x="360" y="48" width="1032" height="864" rx="30"/>
+  <text x="408" y="104" font-size="14" font-weight="800" fill="#8fcba7">运行结果收件箱</text>
+  <text class="title" x="408" y="160">智能体运行监测</text>
+  <text class="body" x="408" y="202">先看最近运行是否完整，再决定生成审阅包或处理缺项。</text>
+  <rect class="card" x="408" y="250" width="936" height="300" rx="24"/>
+  <text class="h2" x="448" y="304">已找到最近一次运行结果</text>
+  <text class="body" x="448" y="338">系统已自动识别本地运行结果，可直接生成审阅包。</text>
+  <rect class="ok" x="1116" y="284" width="170" height="42" rx="21"/>
+  <text class="tag" x="1144" y="311">证据完整</text>
+  <rect class="soft" x="448" y="384" width="380" height="104" rx="16"/>
+  <text class="h3" x="476" y="422">当前监控程序</text>
+  <text class="body" x="476" y="458">运行结果收件箱</text>
+  <text class="small" x="476" y="482">~/AgentEvidence/runs/</text>
+  <text class="h3" x="884" y="422">下一步</text>
+  <text class="body" x="884" y="458">生成审阅包，拿到 PDF 报告。</text>
+  <rect class="primary" x="448" y="506" width="156" height="56" rx="28"/>
+  <text class="button" x="480" y="541">生成审阅包</text>
+  <rect class="secondary" x="624" y="506" width="126" height="56" rx="28"/>
+  <text class="buttonDark" x="656" y="541">查看详情</text>
+  <rect class="secondary" x="770" y="506" width="96" height="56" rx="28"/>
+  <text class="buttonDark" x="802" y="541">帮助</text>
+
+  <text class="h2" x="408" y="626">最近运行</text>
+  <text class="body" x="408" y="660">先看最近几次运行的状态，再决定使用哪一次继续生成。</text>
+  <rect class="card" x="408" y="700" width="936" height="92" rx="20"/>
+  <text class="h3" x="448" y="738">2026-04-25-150000-p4c-complete</text>
+  <text class="small" x="448" y="766">今天 15:00 · 本地运行结果</text>
+  <rect class="ok" x="982" y="724" width="186" height="42" rx="21"/>
+  <text class="tag" x="1014" y="751">可生成审阅包</text>
+  <rect class="primary" x="1184" y="718" width="118" height="54" rx="27"/>
+  <text class="button" x="1210" y="752">生成</text>
+  <rect class="card" x="408" y="812" width="936" height="92" rx="20"/>
+  <text class="h3" x="448" y="850">2026-04-25-100500-missing-receipt</text>
+  <text class="small" x="448" y="878">今天 10:05 · 缺少校验回执文件</text>
+  <rect class="warn" x="982" y="836" width="186" height="42" rx="21"/>
+  <text x="1012" y="863" font-size="14" fill="#8a6420">需处理</text>
+  <rect class="secondary" x="1184" y="830" width="118" height="54" rx="27"/>
+  <text class="buttonDark" x="1210" y="864">处理</text>
+</svg>
+

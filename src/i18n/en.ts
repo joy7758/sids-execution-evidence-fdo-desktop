@@ -567,7 +567,8 @@ const en = {
       summary: "Summary file (summary)",
     },
     optionalNotIncluded: "Not attached this time",
-    placeholderOutputDirectory: "~/Documents/review-pack-output",
+    placeholderOutputDirectory:
+      "~/Library/Application Support/com.joy7758.agentevidencedesktop/review-packs",
     openPdfAction: "Open PDF report",
     copyPdfPathAction: "Copy PDF path",
     openMarkdownAction: "Open Markdown report",

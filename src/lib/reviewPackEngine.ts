@@ -1,4 +1,5 @@
 import { Command } from "@tauri-apps/plugin-shell";
+import type { ReviewPackOutputDirectorySource } from "./reviewPackOutputDirectory";
 
 const REVIEW_PACK_ENGINE_SIDECAR = "binaries/ae-review-pack-engine";
 
@@ -7,6 +8,7 @@ export type ReviewPackEngineInput = {
   receiptPath: string;
   summaryPath: string;
   outputDir: string;
+  outputDirSource?: ReviewPackOutputDirectorySource;
   manifestPath?: string;
   publicKeyPath?: string;
   runtimeEventsPath?: string;
@@ -42,6 +44,8 @@ export type ReviewPackEngineInvocation =
       stderr: string;
       exitCode: number;
       command: string[];
+      reviewPackOutputDir: string;
+      reviewPackOutputDirSource: ReviewPackOutputDirectorySource | null;
     }
   | {
       status: "failure";
@@ -50,6 +54,8 @@ export type ReviewPackEngineInvocation =
       stderr: string;
       exitCode: number | null;
       command: string[];
+      reviewPackOutputDir: string;
+      reviewPackOutputDirSource: ReviewPackOutputDirectorySource | null;
     };
 
 function buildArgs(input: ReviewPackEngineInput): string[] {
@@ -160,10 +166,29 @@ function normalizeLaunchError(error: unknown): ReviewPackEngineError {
   };
 }
 
+function enrichErrorDetails(
+  error: ReviewPackEngineError,
+  input: ReviewPackEngineInput,
+): ReviewPackEngineError {
+  return {
+    ...error,
+    details: {
+      ...(error.details !== null &&
+      typeof error.details === "object" &&
+      !Array.isArray(error.details)
+        ? (error.details as Record<string, unknown>)
+        : { raw_details: error.details ?? null }),
+      review_pack_output_dir: input.outputDir,
+      review_pack_output_dir_source: input.outputDirSource ?? null,
+    },
+  };
+}
+
 function normalizeUnexpectedResponse(params: {
   stdout: string;
   stderr: string;
   exitCode: number | null;
+  input: ReviewPackEngineInput;
 }): ReviewPackEngineError {
   return {
     ok: false,
@@ -173,6 +198,8 @@ function normalizeUnexpectedResponse(params: {
       exit_code: params.exitCode,
       stdout: params.stdout,
       stderr: params.stderr,
+      review_pack_output_dir: params.input.outputDir,
+      review_pack_output_dir_source: params.input.outputDirSource ?? null,
     },
   };
 }
@@ -196,17 +223,21 @@ export async function runReviewPackBuild(
         stderr,
         exitCode: output.code ?? 0,
         command: [REVIEW_PACK_ENGINE_SIDECAR, ...args],
+        reviewPackOutputDir: input.outputDir,
+        reviewPackOutputDirSource: input.outputDirSource ?? null,
       };
     }
 
     if (isErrorPayload(parsed)) {
       return {
         status: "failure",
-        error: parsed,
+        error: enrichErrorDetails(parsed, input),
         stdout,
         stderr,
         exitCode: output.code,
         command: [REVIEW_PACK_ENGINE_SIDECAR, ...args],
+        reviewPackOutputDir: input.outputDir,
+        reviewPackOutputDirSource: input.outputDirSource ?? null,
       };
     }
 
@@ -216,20 +247,25 @@ export async function runReviewPackBuild(
         stdout,
         stderr,
         exitCode: output.code,
+        input,
       }),
       stdout,
       stderr,
       exitCode: output.code,
       command: [REVIEW_PACK_ENGINE_SIDECAR, ...args],
+      reviewPackOutputDir: input.outputDir,
+      reviewPackOutputDirSource: input.outputDirSource ?? null,
     };
   } catch (error) {
     return {
       status: "failure",
-      error: normalizeLaunchError(error),
+      error: enrichErrorDetails(normalizeLaunchError(error), input),
       stdout: "",
       stderr: "",
       exitCode: null,
       command: ["ae-review-pack-engine", ...args],
+      reviewPackOutputDir: input.outputDir,
+      reviewPackOutputDirSource: input.outputDirSource ?? null,
     };
   }
 }

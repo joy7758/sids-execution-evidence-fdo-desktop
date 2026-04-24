@@ -535,7 +535,8 @@ const zhCN = {
       summary: "摘要文件（summary）",
     },
     optionalNotIncluded: "本次未附加",
-    placeholderOutputDirectory: "~/Documents/review-pack-output",
+    placeholderOutputDirectory:
+      "~/Library/Application Support/com.joy7758.agentevidencedesktop/review-packs",
     openPdfAction: "打开 PDF 报告",
     copyPdfPathAction: "复制 PDF 路径",
     openMarkdownAction: "打开 Markdown 报告",

@@ -2,6 +2,11 @@ use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
+use tauri::Manager;
+
+const REVIEW_PACK_OUTPUT_DIR_ENV: &str = "REVIEW_PACK_OUTPUT_DIR";
+const REVIEW_PACK_OUTPUT_SUBDIR: &str = "review-packs";
+const APP_DATA_DIR_NAME: &str = "com.joy7758.agentevidencedesktop";
 
 #[derive(Clone, Serialize)]
 struct DetectionWarning {
@@ -46,6 +51,21 @@ struct RunInboxDiscovery {
     incomplete_directory_count: usize,
     scanned_directory_count: usize,
     recent_runs: Vec<RunInboxItem>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewPackOutputDirectorySource {
+    UserSelected,
+    EnvOverride,
+    AppDataDir,
+    Fallback,
+}
+
+#[derive(Clone, Serialize)]
+pub struct ReviewPackOutputDirectory {
+    output_dir: String,
+    source: ReviewPackOutputDirectorySource,
 }
 
 #[derive(Clone)]
@@ -294,6 +314,116 @@ fn default_run_inbox_path() -> Result<PathBuf, String> {
     Ok(PathBuf::from(home).join("AgentEvidence").join("runs"))
 }
 
+fn non_empty_path(value: Option<String>) -> Option<PathBuf> {
+    value
+        .map(|path| path.trim().to_string())
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+}
+
+fn env_output_dir() -> Option<PathBuf> {
+    std::env::var(REVIEW_PACK_OUTPUT_DIR_ENV)
+        .ok()
+        .and_then(|path| non_empty_path(Some(path)))
+}
+
+fn fallback_app_data_dir() -> Result<PathBuf, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var_os("HOME").ok_or_else(|| "HOME was not available".to_string())?;
+        return Ok(PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join(APP_DATA_DIR_NAME));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let local_app_data = std::env::var_os("LOCALAPPDATA")
+            .or_else(|| std::env::var_os("APPDATA"))
+            .ok_or_else(|| "LOCALAPPDATA and APPDATA were not available".to_string())?;
+        return Ok(PathBuf::from(local_app_data).join(APP_DATA_DIR_NAME));
+    }
+
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    {
+        if let Some(xdg_data_home) = std::env::var_os("XDG_DATA_HOME") {
+            return Ok(PathBuf::from(xdg_data_home).join(APP_DATA_DIR_NAME));
+        }
+
+        let home = std::env::var_os("HOME").ok_or_else(|| "HOME was not available".to_string())?;
+        Ok(PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join(APP_DATA_DIR_NAME))
+    }
+}
+
+fn ensure_output_dir(
+    path: PathBuf,
+    source: ReviewPackOutputDirectorySource,
+) -> Result<ReviewPackOutputDirectory, String> {
+    fs::create_dir_all(&path).map_err(|error| {
+        format!(
+            "Could not create Review Pack output directory {}: {}",
+            path.display(),
+            error
+        )
+    })?;
+
+    if !path.is_dir() {
+        return Err(format!(
+            "Resolved Review Pack output path is not a directory: {}",
+            path.display()
+        ));
+    }
+
+    let output_dir = path.to_string_lossy().into_owned();
+    eprintln!(
+        "Review Pack output directory resolved: source={:?} path={}",
+        source, output_dir
+    );
+
+    Ok(ReviewPackOutputDirectory { output_dir, source })
+}
+
+fn resolve_review_pack_output_directory_internal(
+    app: Option<&tauri::AppHandle>,
+    requested_dir: Option<String>,
+) -> Result<ReviewPackOutputDirectory, String> {
+    if let Some(path) = non_empty_path(requested_dir) {
+        return ensure_output_dir(path, ReviewPackOutputDirectorySource::UserSelected);
+    }
+
+    if let Some(path) = env_output_dir() {
+        return ensure_output_dir(path, ReviewPackOutputDirectorySource::EnvOverride);
+    }
+
+    if let Some(app_handle) = app {
+        return match app_handle.path().app_data_dir() {
+            Ok(path) => ensure_output_dir(
+                path.join(REVIEW_PACK_OUTPUT_SUBDIR),
+                ReviewPackOutputDirectorySource::AppDataDir,
+            ),
+            Err(_) => ensure_output_dir(
+                fallback_app_data_dir()?.join(REVIEW_PACK_OUTPUT_SUBDIR),
+                ReviewPackOutputDirectorySource::Fallback,
+            ),
+        };
+    }
+
+    ensure_output_dir(
+        fallback_app_data_dir()?.join(REVIEW_PACK_OUTPUT_SUBDIR),
+        ReviewPackOutputDirectorySource::AppDataDir,
+    )
+}
+
+pub fn resolve_review_pack_output_directory_for_cli(
+    requested_dir: Option<String>,
+) -> Result<ReviewPackOutputDirectory, String> {
+    resolve_review_pack_output_directory_internal(None, requested_dir)
+}
+
 fn review_pack_generated(directory_path: &std::path::Path) -> bool {
     directory_path.join("review").join("report.pdf").exists()
         || directory_path.join("review").join("report.md").exists()
@@ -449,6 +579,14 @@ fn path_exists(path: String) -> bool {
     PathBuf::from(path).exists()
 }
 
+#[tauri::command]
+fn resolve_review_pack_output_directory(
+    app: tauri::AppHandle,
+    requested_dir: Option<String>,
+) -> Result<ReviewPackOutputDirectory, String> {
+    resolve_review_pack_output_directory_internal(Some(&app), requested_dir)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -459,7 +597,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             detect_run_result_directory,
             discover_run_inbox,
-            path_exists
+            path_exists,
+            resolve_review_pack_output_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

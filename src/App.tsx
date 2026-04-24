@@ -19,6 +19,11 @@ import {
   type ReviewPackEngineInput,
   type ReviewPackEngineInvocation,
 } from "./lib/reviewPackEngine";
+import {
+  resolveReviewPackOutputDirectory,
+  type ReviewPackOutputDirectory,
+  type ReviewPackOutputDirectorySource,
+} from "./lib/reviewPackOutputDirectory";
 import { useI18n } from "./i18n";
 
 type Screen = "welcome" | "detail" | "inputs" | "build" | "result";
@@ -232,6 +237,8 @@ function App() {
     emptyOptionalFieldState,
   );
   const [outputDir, setOutputDir] = useState("");
+  const [outputDirSource, setOutputDirSource] =
+    useState<ReviewPackOutputDirectorySource | null>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [buildRun, setBuildRun] = useState<BuildRunState>({ status: "idle" });
   const [welcomeDetailsVisible, setWelcomeDetailsVisible] = useState(false);
@@ -716,6 +723,8 @@ function App() {
       message: buildRun.run.error.message,
       details: buildRun.run.error.details ?? null,
       exit_code: buildRun.run.exitCode,
+      review_pack_output_dir: buildRun.run.reviewPackOutputDir,
+      review_pack_output_dir_source: buildRun.run.reviewPackOutputDirSource,
       command: buildRun.run.command,
       stdout: buildRun.run.stdout,
       stderr: buildRun.run.stderr,
@@ -792,6 +801,22 @@ function App() {
     setNotice({ tone, text });
   }
 
+  async function applyDefaultOutputDirectory() {
+    try {
+      const resolved = await resolveReviewPackOutputDirectory();
+      setOutputDir(resolved.outputDir);
+      setOutputDirSource(resolved.source);
+      console.info("Review Pack output directory resolved", {
+        review_pack_output_dir: resolved.outputDir,
+        review_pack_output_dir_source: resolved.source,
+      });
+    } catch (error) {
+      setOutputDir("");
+      setOutputDirSource(null);
+      setPanelNotice("warning", normalizeDetectionError(error));
+    }
+  }
+
   function applyDetectionResult(result: RunResultDetectionResult) {
     setRequiredPaths({
       bundle: result.bundlePath,
@@ -804,6 +829,14 @@ function App() {
       runtimeEvents: result.runtimeEventsPath,
     });
   }
+
+  useEffect(() => {
+    if (outputDir.trim()) {
+      return;
+    }
+
+    void applyDefaultOutputDirectory();
+  }, [outputDir]);
 
   function activateDetectionResult(
     result: RunResultDetectionResult,
@@ -1002,7 +1035,17 @@ function App() {
     }
 
     resetBuildFlow();
-    setOutputDir(selected);
+    try {
+      const resolved = await resolveReviewPackOutputDirectory(selected);
+      setOutputDir(resolved.outputDir);
+      setOutputDirSource(resolved.source);
+      console.info("Review Pack output directory resolved", {
+        review_pack_output_dir: resolved.outputDir,
+        review_pack_output_dir_source: resolved.source,
+      });
+    } catch (error) {
+      setPanelNotice("warning", normalizeDetectionError(error));
+    }
   }
 
   function clearRequiredFile(key: RequiredFieldKey) {
@@ -1017,7 +1060,7 @@ function App() {
 
   function clearOutputDirectory() {
     resetBuildFlow();
-    setOutputDir("");
+    void applyDefaultOutputDirectory();
   }
 
   function clearRunResultDirectory() {
@@ -1056,11 +1099,29 @@ function App() {
       return;
     }
 
+    let resolvedOutput: ReviewPackOutputDirectory;
+    try {
+      resolvedOutput =
+        outputDirSource === "user_selected"
+          ? await resolveReviewPackOutputDirectory(outputDir)
+          : await resolveReviewPackOutputDirectory();
+      setOutputDir(resolvedOutput.outputDir);
+      setOutputDirSource(resolvedOutput.source);
+      console.info("Review Pack output directory resolved", {
+        review_pack_output_dir: resolvedOutput.outputDir,
+        review_pack_output_dir_source: resolvedOutput.source,
+      });
+    } catch (error) {
+      setPanelNotice("warning", normalizeDetectionError(error));
+      return;
+    }
+
     const input: ReviewPackEngineInput = {
       bundlePath: requiredPaths.bundle,
       receiptPath: requiredPaths.receipt,
       summaryPath: requiredPaths.summary,
-      outputDir,
+      outputDir: resolvedOutput.outputDir,
+      outputDirSource: resolvedOutput.source,
       manifestPath: optionalPaths.manifest || undefined,
       publicKeyPath: optionalPaths.publicKey || undefined,
       runtimeEventsPath: optionalPaths.runtimeEvents || undefined,

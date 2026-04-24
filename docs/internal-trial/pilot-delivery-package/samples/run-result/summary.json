@@ -1,0 +1,47 @@
+{
+  "anchor_note": "Detached anchoring is not implemented in this repository. Use the exported bundle digest and signed manifest as the handoff point if you want to anchor it in an external timestamp or registry system.",
+  "bundle_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/langchain-evidence.bundle.json",
+  "manifest_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/langchain-evidence.manifest.json",
+  "ok": true,
+  "output_dir": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete",
+  "private_key_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/manifest-private.pem",
+  "public_key_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/manifest-public.pem",
+  "receipt_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/receipt.json",
+  "record_count": 8,
+  "signature_count": 1,
+  "store_path": "/Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/runtime-events.jsonl",
+  "verify_command": "agent-evidence verify-export --bundle /Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/langchain-evidence.bundle.json --public-key /Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/manifest-public.pem",
+  "verify_result": {
+    "format": "json",
+    "issues": [],
+    "latest_chain_hash": "502429abd457ebff9a5d4537a101f9891e036d15e6b25d7b06f124958feed6b9",
+    "ok": true,
+    "record_count": 8,
+    "required_role_signature_counts": {},
+    "required_signature_count": 1,
+    "signature_count": 1,
+    "signature_policy": {
+      "minimum_valid_signatures": null,
+      "minimum_valid_signatures_by_role": {}
+    },
+    "signature_present": true,
+    "signature_results": [
+      {
+        "algorithm": "ed25519",
+        "error": null,
+        "key_id": "langchain-cookbook-demo",
+        "key_version": null,
+        "metadata": {},
+        "role": "attestor",
+        "signed_at": "2026-04-20T08:38:16.132519+00:00",
+        "signer": "local-demo",
+        "verified": true
+      }
+    ],
+    "signature_verified": true,
+    "verified_role_signature_counts": {
+      "attestor": 1
+    },
+    "verified_signature_count": 1
+  }
+}

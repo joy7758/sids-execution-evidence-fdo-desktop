@@ -2,7 +2,7 @@ const en = {
   shell: {
     badge: "Review Pack Desktop v0.1",
     title: "Review Pack Desktop",
-    subtitle: "No command line. Just turn the current artifact set into one review pack.",
+    subtitle: "A desktop entry point for run results, evidence status, and review delivery.",
     languageLabel: "Language",
     locale: {
       zhCN: "中文",
@@ -12,12 +12,12 @@ const en = {
   },
   steps: {
     welcome: {
-      label: "Welcome",
-      hint: "Start with the one job this customer app should solve.",
+      label: "Monitoring home",
+      hint: "Start by checking whether the latest usable run result was found.",
     },
     inputs: {
-      label: "Inputs",
-      hint: "Choose bundle, receipt, summary, and an output folder.",
+      label: "Import results",
+      hint: "Import one run result directory and detect the core files automatically.",
     },
     build: {
       label: "Build",
@@ -40,33 +40,266 @@ const en = {
     notProvided: "Not attached this time",
     retry: "Retry",
   },
+  flowActions: {
+    generateReviewPack: "Generate Review Pack",
+    handleRun: "Handle this run",
+    backToRuns: "Back to recent runs",
+  },
   welcome: {
-    kicker: "Customer desktop path",
-    title: "Turn the current artifact set into one review pack",
+    kicker: "Run inbox",
+    title: "Agent Run Monitoring",
     description:
-      "This desktop shell does one job only: help customers choose an existing bundle, receipt, and summary without touching the command line, then move into a stable Review Pack flow.",
-    primaryAction: "Build Review Pack",
-    secondaryAction: "View result page",
+      "Start by checking whether the app has already found the latest usable run result. Only when nothing usable is found, or detection stays incomplete, should users correct paths manually.",
+    actions: {
+      useLatest: "Use latest run result",
+      primaryFound: "Generate Review Pack",
+      primaryImport: "Import run result",
+      viewDetails: "View details",
+      hideDetails: "Hide details",
+      chooseDirectory: "Choose run result directory",
+      advancedManual: "Advanced: choose files manually",
+    },
+    discovery: {
+      statusLoading: "Checking the inbox",
+      statusFound: "Latest run result found",
+      statusEmpty: "No usable run result found",
+      statusMissing: "Run inbox not found yet",
+      statusFailed: "Automatic discovery failed",
+      loadingTitle: "Checking local run results",
+      loadingDescription:
+        "The app is checking the default inbox to see whether a complete recent run result is available.",
+      foundTitle: "Latest run result found",
+      foundDescription:
+        "The app automatically detected a local run result and it is ready for Review Pack generation.",
+      emptyTitle: "No usable run result found",
+      emptyDescription:
+        "Choose a run result directory now, or come back later after a new run result has been recorded.",
+      emptyDescriptionWithCount:
+        "{0} directories were found in the inbox, but none of them are complete yet. Choose a directory now or try again later.",
+      missingTitle: "Run inbox not found yet",
+      missingDescription:
+        "The default inbox is {0}. You can also choose a run result directory directly.",
+      failedTitle: "The inbox could not be checked right now",
+      readyHint:
+        "The latest run result is complete and can move directly into build confirmation.",
+      readyAction: "Generate Review Pack",
+      missingHint: "Import one run result directory first, then continue.",
+      emptyHint:
+        "The inbox does not contain a complete result yet. Import a directory now, and use manual correction only if needed.",
+      failedHint:
+        "Automatic discovery is unavailable right now. You can still continue by importing a run result directory manually.",
+      loadingHint:
+        "The app is checking the default inbox to see whether a recent complete run result already exists.",
+    },
+    spotlight: {
+      currentRunTitle: "Current usable run result",
+      directoryLabel: "Latest run result",
+      sourceInbox: "Source: run result inbox",
+    },
     cards: {
-      input: {
-        title: "Keep input simple",
-        body: "Only bundle, receipt, and summary are primary inputs. Manifest, public key, and runtime events stay optional supporting files.",
+      inbox: {
+        title: "Run result inbox",
+        body: "The default inbox path is `~/AgentEvidence/runs/`. M1 only scans this location and only inspects the first-level child directories.",
       },
-      output: {
-        title: "Keep the output boundary stable",
-        body: "The primary outputs are still bundle, receipt, and summary. Review Pack stays on top of that contract.",
+      recentRun: {
+        title: "Latest complete run",
+        body: "If a complete run result exists in the inbox, the home page uses it as the default entry instead of asking users to pick files first.",
+        directoryLabel: "Latest run result directory",
+        empty: "No complete run result is available yet.",
       },
-      boundary: {
-        title: "Do not turn this into a platform",
-        body: "This version does not run models, manage providers, or add cloud sync. It only shapes the customer-facing desktop shell.",
+      manual: {
+        title: "Fallback path",
+        body: "Use directory import or advanced manual selection only when automatic discovery is incomplete or a path needs correction.",
       },
+    },
+    recentRuns: {
+      title: "Recent runs",
+      description:
+        "Start from the latest few runs, compare their status, and choose which run should continue into Review Pack generation.",
+      countLabel: "Latest {0}",
+      loading: "Preparing the recent-run list.",
+      empty: "There are no recent runs to show yet.",
+      directoryLabel: "Run result directory",
+      sourceLocal: "Local run result",
+      sourceFallback: "Run result",
+      actions: {
+        useRun: "Generate Review Pack",
+        fixRun: "Handle this run",
+        viewDetails: "View details",
+      },
+      status: {
+        reviewPackGenerated: "Review Pack already generated",
+      },
+      statusHints: {
+        reviewPackGenerated:
+          "This run already produced a Review Pack. You can still inspect it or re-enter the build flow.",
+        ready: "This run is already complete and can continue directly into Review Pack generation.",
+      },
+      verification: {
+        hasReceipt: "Receipt available",
+        missingReceipt: "Receipt missing",
+      },
+      reviewPack: {
+        generated: "Review Pack generated",
+        ready: "Ready to generate",
+        needsAttention: "Needs attention",
+      },
+    },
+  },
+  detail: {
+    kicker: "Run detail",
+    title: "Run detail",
+    description:
+      "Start from whether this run is complete, what is missing, and what the next action should be. Technical paths stay behind a details toggle by default.",
+    emptyTitle: "Choose one recent run first",
+    emptyDescription:
+      "There is no run detail to show yet. Go back to the recent-run list, choose a run, then enter the detail view.",
+    emptyStatus: "No detail yet",
+    summary: {
+      runId: "Run ID",
+      directoryNameHint: "This shows the current directory name or run ID.",
+      time: "Time",
+      timeHint: "This shows the latest modified time for the current run.",
+      timeUnknown: "Time pending",
+      source: "Source",
+      sourceHint: "This shows whether the run came from the inbox or from a manually imported directory.",
+      sourceInbox: "Run result inbox",
+      sourceLocal: "Local run result",
+      sourceManual: "Imported directory",
+      currentStatus: "Current status",
+    },
+    common: {
+      detected: "Detected",
+      missing: "Missing",
+      available: "Available",
+      notAvailable: "Not available",
+      notDetected: "Not detected",
+    },
+    evidence: {
+      title: "Evidence completeness",
+      description:
+        "Start from whether the three required files are present, then decide whether Review Pack can continue.",
+      detectedHint: "This file is already detected and can continue into the next step.",
+      fields: {
+        bundle: "Evidence package file",
+        receipt: "Verification receipt file",
+        summary: "Summary file",
+      },
+    },
+    supporting: {
+      title: "Supporting files",
+      description:
+        "Supporting files remain supporting and do not change the boundary that the three core files stay primary.",
+      availableHint: "This supporting file is available as extra context.",
+      missingHint: "This supporting file was not detected. That does not change the primary boundary judgment.",
+      fields: {
+        manifest: "manifest",
+        publicKey: "public key",
+        runtimeEvents: "runtime events",
+      },
+    },
+    judgment: {
+      title: "Current judgment",
+      description:
+        "This section answers whether the run can continue now, and what action should happen next.",
+      ready: "Review Pack can be generated",
+      generated: "Review Pack already generated",
+      generatedHint:
+        "This run already produced a Review Pack, but it can still be reviewed or re-entered into the flow.",
+      needsAttention: "Needs attention",
+      needsManualReview: "Needs manual review",
+    },
+    policy: {
+      title: "Policy checks",
+      description:
+        "This section shows the minimum checks the product currently exposes, so users can see what this run already has, what is still missing, and what still needs attention. It is visibility inside the product, not a legal conclusion.",
+      items: {
+        runTrace: "Run trace",
+        verificationReceipt: "Verification receipt",
+        reviewDelivery: "Review delivery",
+        pdfReport: "PDF report",
+        manualReview: "Manual review",
+      },
+      states: {
+        available: "Available",
+        missing: "Missing",
+        needsAction: "Needs action",
+        manualReview: "Needs manual review",
+        notNeeded: "Not needed yet",
+      },
+      hints: {
+        runTrace: {
+          available: "The run result was found and the evidence package file was detected.",
+          partial:
+            "The run result directory was found, but the evidence package file is still missing.",
+          missing: "There is no usable run result directory yet.",
+        },
+        verificationReceipt: {
+          available: "The verification receipt file is present and can support the basic verification view.",
+          missing: "The verification receipt file has not been detected yet.",
+        },
+        reviewDelivery: {
+          available: "This run already meets the minimum conditions for Review Pack generation.",
+          generated: "This run already produced a Review Pack and can move directly into delivery.",
+          needsAction: "Core files are still missing, so review delivery cannot continue yet.",
+        },
+        pdfReport: {
+          available: "A PDF report already exists under the current run directory.",
+          missing: "No visible PDF report is available yet.",
+        },
+        manualReview: {
+          manualReview:
+            "Detection warnings or competing candidates were found, so a manual review is recommended.",
+          needsAction: "Core files are still missing, so this run should be corrected first.",
+          notNeeded: "No extra manual review signal is currently visible.",
+        },
+      },
+    },
+    issues: {
+      title: "Items that need attention",
+    },
+    actions: {
+      goToBuild: "Generate Review Pack",
+      prepareBuild: "Continue to output setup",
+      reselectDirectory: "Choose another directory",
+      fixManually: "Advanced manual correction",
+      backToRuns: "Back to recent runs",
+      showFileDetails: "View file details",
+      hideFileDetails: "Hide file details",
+    },
+    files: {
+      requiredTitle: "Core file details",
+      requiredDescription:
+        "This shows the actual paths for the evidence package, verification receipt, and summary.",
+      supportingTitle: "Supporting file details",
+      supportingDescription:
+        "This shows the actual paths for manifest, public key, and runtime events.",
     },
   },
   inputs: {
     kicker: "Input setup",
-    title: "Choose the files needed for Review Pack",
+    title: "Confirm the current run result",
     description:
-      "D2 upgrades the Inputs page into a real desktop form: choose files, choose an output folder, and finish validation before continuing.",
+      "Start from the current run status and only open technical file details when a correction is needed.",
+    modeTitle: "Input mode",
+    modeSummary: {
+      directory:
+        "The default path is automatic detection for the current run result. Switch to Advanced manual selection only when detection is incomplete.",
+      manual:
+        "You are correcting file paths manually. When the paths look right, return to the automatic path and continue.",
+    },
+    manualModeBadge: "Advanced manual selection",
+    backToAutoAction: "Back to automatic path",
+    modes: {
+      directory: {
+        label: "Import Run Result Directory",
+        hint: "Default path. Import one directory and detect the files automatically.",
+      },
+      manual: {
+        label: "Advanced manual selection",
+        hint: "Use this only when you need to correct detected file paths.",
+      },
+    },
     requiredStatus: "{0}/{1} required files ready",
     optionalStatus: "{0} optional files attached",
     formStatusReady: "Ready for build",
@@ -76,13 +309,81 @@ const en = {
       "These three files define the primary input surface for the customer desktop v0.1.",
     optionalSectionTitle: "Optional supporting files",
     optionalSectionDescription:
-      "Supporting files stay supporting and do not become a new primary output line.",
+      "Supporting files stay supporting and do not become a new primary output line. Only manifest, public key, and runtime events are supported here. Private keys are excluded by default.",
+    manualSectionTitle: "Advanced manual selection",
+    manualSectionDescription:
+      "Use this when automatic detection is incomplete, or when you want to replace a detected file path with a different one.",
+    manualSectionDirectoryNotice:
+      "The current directory-detection result has already been carried into this form. You can correct any missing or incorrect paths here.",
+    latestResult: {
+      title: "Latest run result detected",
+      description:
+        "The app is currently using the latest complete run result discovered automatically. Technical file paths stay collapsed by default and can be opened only when needed.",
+      cardTitle: "Latest run result status",
+      cardSourceInbox: "Source: run result inbox",
+      directoryLabel: "Run result directory",
+      actionLabel: "Next step",
+      nextActionBuild: "Generate Review Pack",
+      nextActionFix: "Handle this run",
+      showDetails: "View detection details",
+      reselectDirectory: "Choose another directory",
+      advancedManual: "Advanced: choose files manually",
+      detectedLabel: "Latest run result detected",
+    },
+    directoryImport: {
+      title: "Import Run Result Directory",
+      description:
+        "Choose one run result directory and the desktop app will automatically detect the evidence package, verification receipt, summary, and optional supporting files.",
+      label: "Run result directory",
+      hint: "Choose a directory that already contains one exported run result.",
+      placeholder: "No run result directory selected yet",
+      statusIdle: "Waiting for a directory",
+      statusScanning: "Detecting files now",
+      statusReady: "Automatic detection complete",
+      statusIncomplete: "Automatic detection incomplete",
+      statusFailed: "Directory scan failed",
+      directorySelected: "Directory selected",
+      detectedCardTitle: "Current run result",
+      cardSourceManual: "Source: imported directory",
+      scanningNotice:
+        "The app is scanning the selected directory and detecting the available evidence files.",
+      detectedPrimaryTitle: "Detected core files",
+      detectedPrimaryDescription:
+        "This shows the detected evidence package, verification receipt, and summary.",
+      detectedSupportingTitle: "Detected supporting files",
+      detectedSupportingDescription:
+        "This shows optional supporting files. Only manifest, public key, and runtime events are detected here. Private keys are excluded by default.",
+      notDetected: "This file was not detected yet",
+      optionalNotDetected: "This supporting file was not detected in the selected directory",
+      warningsTitle: "Detection warnings",
+      multipleCandidates: "Multiple {0} candidates were found. The app is currently using {1}.",
+      issuesTitle: "Items that need attention",
+      detectedIncompleteHelp:
+        "Automatic detection is incomplete. Review the missing items, or switch to Advanced manual selection to correct the file paths.",
+      useAdvancedAction: "Switch to Advanced manual selection",
+      hideDetails: "Hide detection details",
+      scanFailedTitle: "The directory scan did not complete",
+      scanFailed:
+        "The app could not detect a complete result from this directory. Check the directory contents, or switch to Advanced manual selection.",
+      detectedReady: "Detection completed and the app is ready for the build step.",
+      detectedIncomplete:
+        "The app detected some files, but required items are still missing. Correct them before continuing.",
+      fixMissingNotice:
+        "Automatic detection is still incomplete. Correct the missing files, or switch to Advanced manual selection before continuing.",
+      missingFields: {
+        bundle: "Evidence package file is missing",
+        receipt: "Verification receipt file is missing",
+        summary: "Summary file is missing",
+      },
+    },
     outputSectionTitle: "Output directory",
     outputSectionDescription:
       "Before Review Pack is generated, choose the local folder where it should be written.",
     outputLabel: "Review pack output directory",
     outputHint: "Choose where the review pack will be saved.",
     outputPlaceholder: "No output directory selected yet",
+    outputReadyNotice:
+      "This run is already complete. Confirm the output location first, then continue to the build confirmation step.",
     primaryAction: "Continue to build",
     secondaryAction: "Back to welcome",
     buildBlockedNotice:
@@ -122,11 +423,29 @@ const en = {
       },
     },
   },
+  runStatus: {
+    ready: {
+      label: "Evidence is complete and Review Pack can be generated",
+      hint: "Bundle, receipt, and summary are present. Choose the output location and continue.",
+    },
+    missingBundle: {
+      label: "Evidence package missing and needs attention",
+      hint: "The evidence package file (bundle) has not been detected yet, so Review Pack cannot continue.",
+    },
+    missingReceipt: {
+      label: "Verification receipt missing and needs attention",
+      hint: "The verification receipt file (receipt) has not been detected yet. Add it before continuing.",
+    },
+    missingSummary: {
+      label: "Summary missing and needs attention",
+      hint: "The summary file (summary) has not been detected yet. Add it before continuing.",
+    },
+  },
   build: {
     kicker: "Preflight review",
-    title: "Review the inputs, then send them to the local engine",
+    title: "Confirm and generate Review Pack",
     description:
-      "D5 wires this page to the local sidecar. Review the preflight summary, then run the bounded Review Pack build.",
+      "This page only confirms the current run source, the save location, and the status summary. Technical paths stay collapsed unless needed.",
     statusIdle: "Ready to build",
     statusRunning: "Building now",
     statusSuccess: "Build succeeded",
@@ -137,6 +456,14 @@ const en = {
     secondaryAction: "Back to inputs",
     runningCallout:
       "The desktop app is calling the local Review Pack engine now. Keep this window open until the result returns.",
+    focus: {
+      idle: "Everything needed is ready. Confirm it and generate Review Pack.",
+      running:
+        "The local engine is building the Review Pack. Keep this window open until the result returns.",
+      success:
+        "The review pack has already been generated successfully. Open the result view when you are ready to deliver it.",
+      failure: "This build did not finish. Review the result first, then decide whether to retry.",
+    },
     failure: {
       title: "This build did not complete",
       detailsTitle: "Machine-readable error details",
@@ -178,11 +505,32 @@ const en = {
       },
     },
     summary: {
+      runResultDirectorySelected: "Run result directory: imported",
+      manualSource: "Current source: advanced manual selection",
       requiredFiles: "Required files: {0}",
       optionalFiles: "Optional supporting files: {0}",
       outputDirectory: "Output directory: selected",
+      buildAction: "Next step: generate Review Pack",
+      readyAction: "Current state: Review Pack already generated",
     },
+    runCard: {
+      title: "Current run result",
+      directoryLabel: "Run result source",
+      sourceDirectory: "Source: run result directory",
+      sourceManual: "Source: advanced manual selection",
+    },
+    outputCard: {
+      title: "Output location",
+      description:
+        "The generated Review Pack will be written here. The page shows a simple summary first; technical paths stay behind details.",
+    },
+    sourceManualValue: "Advanced manual selection",
+    showDetailsAction: "View details",
+    hideDetailsAction: "Hide details",
     preflight: {
+      sourceDirectoryTitle: "Run result directory",
+      sourceDirectoryDescription:
+        "This shows the directory imported for automatic evidence-file detection.",
       requiredTitle: "Required inputs",
       requiredDescription:
         "These are the three primary files that will be handed to the local engine.",
@@ -202,9 +550,9 @@ const en = {
     emptyTitle: "Run one review-pack build first",
     emptyDescription:
       "There is no generated result to show yet. Go back to the Build page, run the local engine once, then return here.",
-    successTitle: "The review pack is ready",
+    successTitle: "Review Pack is ready",
     successDescription:
-      "This build returned a stable result. You can open the output folder or copy the pack path for the next handoff.",
+      "The first screen keeps the focus on the delivery result: where it was saved, and what to do next.",
     failureTitle: "The local engine returned a failure",
     failureDetailsTitle: "Failure details",
     errorCodeLabel: "Error code",
@@ -219,27 +567,66 @@ const en = {
       summary: "Summary file (summary)",
     },
     optionalNotIncluded: "Not attached this time",
-    placeholderOutputDirectory: "~/Documents/review-pack-output",
+    placeholderOutputDirectory:
+      "~/Library/Application Support/com.joy7758.agentevidencedesktop/review-packs",
+    openPdfAction: "Open PDF report",
+    copyPdfPathAction: "Copy PDF path",
+    openMarkdownAction: "Open Markdown report",
+    copyMarkdownPathAction: "Copy Markdown path",
     openFolderAction: "Open Folder",
-    copyPathAction: "Copy Path",
+    copySaveLocationAction: "Copy save location",
+    openPdfSuccess: "Tried to open the PDF report.",
+    openPdfFailed:
+      "The PDF report could not be opened right now. Make sure the file still exists.",
+    copyPdfPathSuccess: "Copied the PDF report path.",
+    copyPdfPathFailed: "The PDF report path could not be copied. Try again.",
+    openMarkdownFallbackSuccess:
+      "PDF was not found, so the app tried to open the Markdown report instead.",
+    openMarkdownFallbackFailed:
+      "PDF was not found and the Markdown report could not be opened either.",
+    copyMarkdownFallbackSuccess:
+      "PDF was not found, so the Markdown report path was copied instead.",
+    copyMarkdownFallbackFailed:
+      "PDF was not found and the Markdown report path could not be copied.",
     openFolderSuccess: "Tried to open the review-pack folder.",
     openFolderFailed:
       "The review-pack folder could not be opened right now. Make sure the local output still exists.",
-    copyPathSuccess: "Copied the review-pack folder path.",
-    copyPathFailed: "The path could not be copied. Try again.",
+    copySaveLocationSuccess: "Copied the review-pack save location.",
+    copySaveLocationFailed: "The save location could not be copied. Try again.",
+    pdfFallbackTitle: "PDF report not found",
+    pdfFallbackBody:
+      "The build result is still available. You can open the Markdown report as a technical format instead.",
+    showDetailsAction: "View output details",
+    hideDetailsAction: "Hide output details",
+    backToRunsAction: "Back to recent runs",
     goToBuildAction: "Back to build",
+    deliveryCard: {
+      title: "Delivery result",
+      body: "Start from the formal deliverable: the PDF report and its saved location. Technical and intermediate files stay behind the details toggle.",
+      status: "Ready to deliver",
+      pdfLabel: "PDF report",
+      pdfChecking: "Checking whether the PDF report exists",
+      pdfMissing: "PDF report was not found",
+      pdfFallback: "Markdown report is still available as a technical format",
+      directoryLabel: "Saved location",
+    },
     cards: {
       packDir: {
         title: "Review pack directory",
         body: "This shows the stable pack directory returned by the current build.",
+      },
+      pdf: {
+        title: "PDF report",
+        body: "This shows the formal PDF-delivery path.",
+        empty: "No PDF report was detected",
       },
       index: {
         title: "Index file (index.json)",
         body: "This shows the pack-index path. It remains a pack index, not a new primary artifact.",
       },
       report: {
-        title: "Review report (report.md)",
-        body: "This shows the review-report path. Taxonomy and explanation still belong to the renderer layer only.",
+        title: "Markdown report (technical format)",
+        body: "This shows the Markdown intermediate report path for technical review and debugging.",
       },
     },
   },

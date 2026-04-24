@@ -1,0 +1,36 @@
+{
+  "excluded_supporting_files": [],
+  "missing_supporting_files": [],
+  "primary_files": {
+    "bundle": "primary/bundle.json",
+    "receipt": "primary/receipt.json",
+    "summary": "primary/summary.json"
+  },
+  "receipt_facts": {
+    "format": "json",
+    "issues": [],
+    "latest_chain_hash": "502429abd457ebff9a5d4537a101f9891e036d15e6b25d7b06f124958feed6b9",
+    "ok": true,
+    "record_count": 8,
+    "required_signature_count": 1,
+    "signature_count": 1,
+    "signature_present": true,
+    "signature_verified": true
+  },
+  "report_path": "review/report.md",
+  "summary_orientation": {
+    "base_url": null,
+    "call_count": null,
+    "model": null,
+    "ok": true,
+    "provider_label": null,
+    "record_count": 8,
+    "signature_count": 1,
+    "verify_command": "agent-evidence verify-export --bundle /Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/langchain-evidence.bundle.json --public-key /Users/zhangbin/AgentEvidence/runs/2026-04-25-100000-complete/manifest-public.pem"
+  },
+  "supporting_files": {
+    "manifest": "supporting/manifest.json",
+    "public_key": "supporting/manifest-public.pem",
+    "runtime_events": "supporting/runtime-events.jsonl"
+  }
+}

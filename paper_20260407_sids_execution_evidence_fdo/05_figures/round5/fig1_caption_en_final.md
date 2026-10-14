@@ -1,0 +1,1 @@
+Figure 1. Operation-centered structure of the accountability object. The operation is the anchor, while policy, provenance, evidence, and validation provide the checkable relation layer; profile, timestamp, actor, subject, and constraints provide supporting context.

@@ -1,0 +1,130 @@
+% official-template mode
+% round8_studyref_v3 default working path
+% scientific text frozen
+% compile-facing bibliography surface is pure English canonical
+% Chinese titles and study annotations are externalized to sidecar study files
+% this path is intentionally closer to the final submission path
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{url}
+\usepackage{balance}
+
+\title{A Minimal Verifiable Profile and Validator Path for Single-Operation Accountability in FDO and Data-Space Settings}
+
+\author{
+\IEEEauthorblockN{AUTHOR NAME HERE}
+\IEEEauthorblockA{
+AFFILIATION HERE\\
+COUNTRY HERE\\
+EMAIL HERE
+}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Agent-mediated data operations in FDO and data-space settings are often visible through logs, yet logs alone do not give another party a compact, independently checkable account of one operation. They preserve runtime history, but they do not automatically package actor, subject, policy, evidence, and validation relations as one reviewer-facing object for later independent external review. This paper presents a minimal verifiable profile for single-operation accountability and a validator path that exercises that profile on a bounded artifact surface. The current implementation includes a profile specification, a JSON Schema, a reference validator CLI, one valid example, three controlled invalid examples, test anchors, and one runnable walkthrough. The validator checks four properties: schema conformance, reference closure, cross-field consistency, and bounded integrity recomputation. Together, the schema, validator, examples, tests, and walkthrough form a small inspectable closure for one repo-backed operation context. The contribution is intentionally narrow: it shows that one agent-mediated operation in an FDO or data-space setting can be expressed and checked as a single-operation accountability object.
+\end{abstract}
+
+\begin{IEEEkeywords}
+execution evidence, operation accountability, data spaces, FAIR digital objects, validation, provenance, artifact verification
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+FDO and data-space settings increasingly rely on object-mediated operations carried out by software agents. An agent may read an object, update metadata, emit derived references, and do so under explicit policy conditions. Later review, however, is often weaker than execution itself. A runtime may expose traces and logs, yet an external reviewer still has to reconstruct what was acted on, under which rule surface, and whether the resulting record is internally coherent. The digital-object lineage explains why this matters: object identity and machine-handled interaction are central at the systems level, but they do not by themselves supply a compact accountability object for one operation \cite{kahn2006framework,dona2018doip,soilandreyes2024evaluating}.
+
+That gap is narrower than observability. A trace is useful for debugging, but debugging and later accountability are not the same review task. A reviewer-facing record has to state the actor, subject, operation, policy surface, evidence links, and validation state for one operation in a form that can be checked directly. It also has to make those relations explicit enough that a third party can test them without reconstructing the full runtime. When those relations remain implicit or scattered across runtime records, later review depends on reconstruction rather than inspection.
+
+This paper takes the smallest path we can defend. It treats execution evidence as a single-operation accountability object with an explicit profile, not as a larger telemetry stack. The shipped artifact couples that profile to a JSON Schema and a validator that checks four properties: schema conformance, reference closure, cross-field consistency, and bounded integrity recomputation. The point is not richer logging. The point is a small object that another party can load, validate, and interpret without replaying a larger runtime. In that sense, the paper is closer to provenance validity work than to larger interoperability proposals \cite{moreau2013provdm,cheney2013provconstraints}.
+
+The current repo-backed surface is deliberately tight: one valid example, three controlled invalid examples, tests, a command-line validation path, and one runnable walkthrough. That boundary is also the paper's scope boundary. The paper claims that this one context can be represented and checked as a bounded accountability object. It does not claim more than the artifact shows.
+
+Within that boundary, the contribution is practical. First, the paper defines a minimal operation-centered profile with explicit top-level relations for actor, subject, operation, policy, constraints, provenance, evidence, and validation. Second, it provides a validator path that turns the profile from a descriptive format into an executable check surface. Third, it documents a small artifact closure in which one positive case, three negative cases, tests, and one walkthrough can be inspected together. The result is not simply a data format. It is a small reviewable package in which the object model, validation rules, and exercise path stay aligned.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{
+\centering
+\textbf{Operation}\\[4pt]
+\small
+policy \quad provenance \quad evidence \quad validation\\[3pt]
+profile \quad timestamp \quad actor \quad subject \quad constraints
+}}
+\caption{Operation-centered structure of the accountability object.}
+\label{fig:profile}
+\end{figure}
+
+\section{Method}
+
+The method is an operation-centered object model plus a bounded validation path. The object model is encoded as one JSON record whose top-level sections are \texttt{profile}, \texttt{statement\_id}, \texttt{timestamp}, \texttt{actor}, \texttt{subject}, \texttt{operation}, \texttt{policy}, \texttt{constraints}, \texttt{provenance}, \texttt{evidence}, and \texttt{validation}. These sections are not independent metadata buckets. They form one relation layer around a single operation statement, and that shared relation layer is what later validation works on.
+
+Each section has a bounded role. \texttt{profile} fixes identity and version. \texttt{statement\_id} and \texttt{timestamp} identify one statement instance. \texttt{actor} records who performed the operation. \texttt{subject} records the primary object acted on. \texttt{operation} records the action and its input and output references. \texttt{policy} and \texttt{constraints} record the governing rule surface. \texttt{provenance} ties actor, subject, operation, and input or output references together. \texttt{evidence} records emitted references, artifacts, and integrity fields. \texttt{validation} records how the statement is to be checked.
+
+The design keeps the operation at the center. The operation links outward to subject, inputs, outputs, and policy. Provenance repeats those references so that they can be checked rather than inferred. Evidence binds the statement to emitted references and artifacts. Validation binds the statement to the objects and checks used to review it later. This arrangement supports one bounded question: whether a later reader can inspect one statement and determine that its internal relation layer is coherent.
+
+The shipped JSON Schema provides the structural contract for this object. At that layer, the method enforces required fields, fixed profile identifiers, value types, formats, and bounded enums. Schema checks are therefore the first gate. A malformed instance does not enter later stages.
+
+The reference validator then applies four stages. Stage one checks schema conformance. Stage two checks reference closure. Stage three checks cross-field consistency. Stage four performs bounded integrity recomputation. Taken together, these four stages give the artifact a stable failure grammar: malformed structure, broken references, inconsistent relations, or mismatched integrity fields.
+
+The current implementation exposes the same path through a reference CLI. The CLI reads one profile instance and returns a machine-readable JSON report. On success, the report indicates a clean pass with no issues. On failure, it records stage-specific issues and exits non-zero.
+
+The shipped examples, tests, and runnable walkthrough all exercise this same path. One valid case serves as the positive witness. Three invalid cases each break one primary rule class: required-field completeness, reference closure, or the evidence-to-policy relation. The walkthrough shows that the same validation path can be rerun on a single end-to-end case rather than only on static files.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{
+\centering
+\small
+input statement\\[3pt]
+$\downarrow$\\[3pt]
+schema conformance $\rightarrow$ reference closure\\[3pt]
+$\downarrow$\\[3pt]
+cross-field consistency $\rightarrow$ bounded integrity recomputation\\[3pt]
+$\downarrow$\\[3pt]
+JSON report \quad exit status \quad summary
+}}
+\caption{Four-stage validation path for one profile instance.}
+\label{fig:validator}
+\end{figure}
+
+\section{Evaluation}
+
+This evaluation asks a narrow question: does the shipped artifact expose a bounded and diagnosable validation surface for one repo-backed context? The evaluated surface includes the profile specification, JSON Schema, reference validator CLI, one valid example, three invalid examples, tests, and one runnable walkthrough.
+
+The valid example serves as the positive witness. Its expected outcome is a passing report with no issues. The three invalid cases are controlled negative witnesses. They cover a missing required field, an unresolved reference, and a broken policy relation. The point of this negative set is not completeness. The point is to show that the validator distinguishes several failure classes inside the current profile boundary and reports them in a machine-readable form.
+
+Tests and the CLI anchor this boundary. The tests check the operation surface and the command-line exposure. The CLI returns a JSON report and a non-zero exit on failure, so the same path can be exercised by a reviewer rather than only by internal code. The runnable walkthrough extends that path one step further by showing one end-to-end case. It emits a statement, validates it, and produces review artifacts.
+
+\textbf{What this evaluation establishes.} It establishes that the current artifact supports one passing path, three controlled failing paths, one runnable walkthrough, and one reusable validation interface. It also establishes that the artifact boundary is inspectable: the schema, validator, examples, tests, and walkthrough are aligned around the same object model under one shared validation interface.
+
+\textbf{What this evaluation does not establish.} It does not establish behavior beyond the current repo-backed context. It does not show a broader scenario family, and it does not by itself justify stronger generality claims. That narrower conclusion is intentional: the evaluation is meant to show closure, not scope.
+
+\section{Related Work}
+
+Digital-object work provides the overall context. The digital object lineage emphasizes persistent identity and machine-handled interaction, while DOIP makes that interaction explicit at protocol level \cite{kahn2006framework,dona2018doip}. Recent FDO work studies those ideas at a larger systems scale than the present paper \cite{soilandreyes2024evaluating}. That larger lineage matters here because the present paper borrows the object-centered setting but not the larger scope.
+
+Provenance work is the closest conceptual neighbor. PROV-DM defines general models for entities, activities, and agents, and PROV-Constraints makes explicit that provenance representations can carry validity conditions \cite{groth2013provoverview,moreau2013provdm,cheney2013provconstraints}. The present paper shares the emphasis on explicit relations and checkable consistency, but narrows the target to one operation-centered object.
+
+Logs and traces remain essential for observability and debugging. The present paper does not compete with telemetry systems. It isolates a different review target: a compact artifact that a third party can check after one operation rather than a larger runtime transcript.
+
+Artifact-oriented verification offers another useful comparison point. in-toto shows how explicit step records can support downstream verification, and ACM artifact-review guidance emphasizes inspectable, exercisable research objects \cite{torresarias2019intoto,acm2020artifactbadging}. The present paper adopts that smaller artifact posture for one operation accountability object and keeps the contribution reviewable at workshop scale.
+
+\section{Limits and Conclusion}
+
+The current repo-backed boundary is small. It contains one valid context, three controlled invalid cases, one validator path, tests, and one runnable walkthrough. That boundary is a limitation, but it is also the design choice that makes the artifact readable and checkable.
+
+Minimality here is methodological rather than accidental. By keeping the operation at the center and by restricting validation to four explicit checks, the paper avoids turning one checkable claim into several uncheckable ones. The result is a paper that can state exactly what the artifact supports and stop there.
+
+The conclusion is therefore narrow. One agent-mediated operation in an FDO or data-space setting can be represented as a single-operation accountability object with a concrete validation path. The profile, schema, validator, examples, tests, and walkthrough form a small inspectable closure that reviewers can understand without reconstructing a much larger runtime. Future extensions can broaden contexts only after the same closure exists for them.
+
+\balance
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs_compile_safe_v3}
+
+\end{document}

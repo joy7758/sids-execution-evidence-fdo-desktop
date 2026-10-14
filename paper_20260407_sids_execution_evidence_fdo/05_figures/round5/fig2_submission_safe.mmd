@@ -1,0 +1,9 @@
+flowchart LR
+    I[Profile instance] --> S[Schema conformance]
+    S --> R[Reference closure]
+    R --> C[Cross-field consistency]
+    C --> M[Bounded integrity recomputation]
+    M --> J[JSON report]
+    J --> X[Exit status and summary]
+
+    W[Runnable walkthrough] -. exercises same path .-> I

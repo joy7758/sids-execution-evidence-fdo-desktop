@@ -1,0 +1,9 @@
+flowchart LR
+    I[Input JSON] --> S[Schema checks]
+    S --> R[Reference closure]
+    R --> C[Cross-field consistency]
+    C --> M[Minimal integrity checks]
+    M --> J[JSON report]
+    J --> X[Exit code and summary]
+
+    D[Optional demo path] -. emits profile JSON .-> I

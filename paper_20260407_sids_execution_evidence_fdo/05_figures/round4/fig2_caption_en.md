@@ -1,0 +1,1 @@
+Figure 2. Validation path for one profile instance. The reference validator applies schema, reference, consistency, and bounded integrity checks and returns a machine-readable report, exit status, and summary; the runnable walkthrough exercises the same path on one case.

@@ -1,0 +1,11 @@
+AUTHOR_BLOCK_TODO
+
+Current locally supported cluster:
+- Name: Zhang Bin
+- Affiliation: Independent Research Scholar
+- Email: joy7759@gmail.com
+- Country: TODO confirm
+
+Uploader note:
+- Local materials still contain cross-manuscript variants in name order and affiliation wording.
+- Confirm the exact single-blind author block before upload.

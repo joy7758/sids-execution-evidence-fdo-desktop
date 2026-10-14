@@ -1,0 +1,13 @@
+Keywords:
+- execution evidence
+- operation accountability
+- data spaces
+- FAIR digital objects
+- validation
+- provenance
+- artifact verification
+
+Suggested subject area / track:
+- secure and intelligent data spaces
+- trust, explainability, and accountability of AI in data spaces
+- runtime assurance and validation for agent-mediated operations

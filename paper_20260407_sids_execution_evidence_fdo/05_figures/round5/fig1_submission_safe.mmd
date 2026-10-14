@@ -1,0 +1,26 @@
+flowchart TD
+    O[Operation]
+    P[Profile]
+    T[Timestamp]
+    A[Actor]
+    S[Subject]
+    C[Constraints]
+    PO[Policy]
+    PR[Provenance]
+    E[Evidence]
+    V[Validation]
+
+    P --> O
+    T --> O
+    A --> O
+    S --> O
+    C --> PO
+    PO --> O
+    O --> PR
+    A --> PR
+    S --> PR
+    O --> E
+    PO --> E
+    O --> V
+    PR --> V
+    E --> V

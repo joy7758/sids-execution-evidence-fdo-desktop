@@ -1,0 +1,19 @@
+Keywords
+- execution evidence
+- single-operation accountability
+- data spaces
+- FAIR digital objects
+- validator-driven checking
+- provenance constraints
+- artifact verification
+
+Suggested subject area / track expressions
+- trustworthy software and data infrastructure
+- engineering for data spaces and digital objects
+- validation and accountability for agent-mediated systems
+
+Suggested primary discipline
+- Software and Systems Engineering
+
+Suggested secondary discipline
+- Data Spaces, Provenance, and Digital Infrastructure

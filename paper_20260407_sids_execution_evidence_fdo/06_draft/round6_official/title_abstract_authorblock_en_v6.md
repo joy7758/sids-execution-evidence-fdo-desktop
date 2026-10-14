@@ -1,0 +1,22 @@
+# Title
+
+A Minimal Verifiable Profile and Validator Path for Single-Operation Accountability in FDO and Data-Space Settings
+
+# Abstract
+
+Agent-mediated data operations in FDO and data-space settings are often visible through logs, yet logs alone do not give another party a compact, independently checkable account of one operation. They preserve runtime history, but they do not automatically package actor, subject, policy, evidence, and validation relations as one reviewer-facing object for later independent external review. This paper presents a minimal verifiable profile for single-operation accountability and a validator path that exercises that profile on a bounded artifact surface. The current implementation includes a profile specification, a JSON Schema, a reference validator CLI, one valid example, three controlled invalid examples, test anchors, and one runnable walkthrough. The validator checks four properties: schema conformance, reference closure, cross-field consistency, and bounded integrity recomputation. Together, the schema, validator, examples, tests, and walkthrough form a small inspectable closure for one repo-backed operation context. The contribution is intentionally narrow: it shows that one agent-mediated operation in an FDO or data-space setting can be expressed and checked as a single-operation accountability object.
+
+# Author Block
+
+AUTHOR_BLOCK_TODO
+
+Suggested locally supported cluster:
+
+- Name: Zhang Bin
+- Affiliation: Independent Research Scholar
+- Email: joy7759@gmail.com
+- Country: TODO confirm
+
+Uploader blocker:
+
+- Local materials do not yet lock one fully canonical author block across name order, affiliation wording, and country.
